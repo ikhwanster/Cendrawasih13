@@ -1,0 +1,473 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'ikhwanster@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidRt(rt) {
+      return rt is string && rt.size() == 6 && rt in [
+        'RT 001', 'RT 002', 'RT 003', 'RT 004', 'RT 005',
+        'RT 006', 'RT 007', 'RT 008', 'RT 009', 'RT 010'
+      ];
+    }
+
+    function isValidCoordinates(lat, lng) {
+      return (lat is int || lat is float) && lat >= -90 && lat <= 90 &&
+             (lng is int || lng is float) && lng >= -180 && lng <= 180;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUserPublic(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'rt', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'displayName', 'rt', 'createdAt', 'updatedAt']) &&
+             isValidId(data.uid) &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             isValidRt(data.rt) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data) {
+      return data.keys().hasAll(['uid', 'email', 'phone', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'email', 'phone', 'updatedAt']) &&
+             isValidId(data.uid) &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             data.phone is string && data.phone.size() >= 0 && data.phone.size() <= 24 &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'grantedBy', 'role', 'createdAt']) &&
+             data.keys().hasOnly(['uid', 'grantedBy', 'role', 'createdAt']) &&
+             isValidId(data.uid) &&
+             isValidId(data.grantedBy) &&
+             data.role is string && data.role.size() == 5 && data.role == 'admin' &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCitizenReport(data) {
+      return data.keys().hasAll([
+               'authorId', 'authorName', 'title', 'description', 'category',
+               'urgency', 'status', 'rt', 'rwCode', 'visibility',
+               'latitude', 'longitude', 'address', 'photoDataUrl',
+               'assignedAgency', 'adminNote', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'authorId', 'authorName', 'title', 'description', 'category',
+               'urgency', 'status', 'rt', 'rwCode', 'visibility',
+               'latitude', 'longitude', 'address', 'photoDataUrl',
+               'assignedAgency', 'adminNote', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidId(data.authorId) &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+             data.description is string && data.description.size() >= 5 && data.description.size() <= 1500 &&
+             data.category is string && data.category.size() <= 32 && data.category in [
+               'kesehatan_jentik', 'infrastruktur', 'kebersihan',
+               'drainase_banjir', 'keamanan', 'fasilitas_umum'
+             ] &&
+             data.urgency is string && data.urgency.size() <= 16 && data.urgency in [
+               'rendah', 'sedang', 'tinggi', 'darurat'
+             ] &&
+             data.status is string && data.status.size() <= 16 && data.status in [
+               'menunggu', 'diverifikasi', 'diproses', 'selesai', 'ditolak'
+             ] &&
+             isValidRt(data.rt) &&
+             data.rwCode is string && data.rwCode.size() == 5 && data.rwCode == 'RW013' &&
+             data.visibility is string && data.visibility.size() <= 10 && data.visibility in ['public', 'private'] &&
+             isValidCoordinates(data.latitude, data.longitude) &&
+             data.address is string && data.address.size() >= 1 && data.address.size() <= 300 &&
+             data.photoDataUrl is string && data.photoDataUrl.size() <= 750000 &&
+             (data.photoDataUrl.size() == 0 || data.photoDataUrl.matches('^data:image/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$')) &&
+             data.assignedAgency is string && data.assignedAgency.size() <= 120 &&
+             data.adminNote is string && data.adminNote.size() <= 1000 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidJumantikLog(data) {
+      return data.keys().hasAll([
+               'authorId', 'inspectionDate', 'weekKey', 'rt', 'rwCode',
+               'officerName', 'housesInspected', 'housesWithLarvae',
+               'larvaeLocations', 'actionTaken', 'notes',
+               'latitude', 'longitude', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'authorId', 'inspectionDate', 'weekKey', 'rt', 'rwCode',
+               'officerName', 'housesInspected', 'housesWithLarvae',
+               'larvaeLocations', 'actionTaken', 'notes',
+               'latitude', 'longitude', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidId(data.authorId) &&
+             data.inspectionDate is string && data.inspectionDate.size() == 10 &&
+             data.inspectionDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             data.weekKey is string && data.weekKey.size() == 8 &&
+             data.weekKey.matches('^[0-9]{4}-W[0-9]{2}$') &&
+             isValidRt(data.rt) &&
+             data.rwCode is string && data.rwCode.size() == 5 && data.rwCode == 'RW013' &&
+             data.officerName is string && data.officerName.size() >= 2 && data.officerName.size() <= 80 &&
+             data.housesInspected is int && data.housesInspected >= 1 && data.housesInspected <= 500 &&
+             data.housesWithLarvae is int && data.housesWithLarvae >= 0 && data.housesWithLarvae <= 500 &&
+             data.housesWithLarvae <= data.housesInspected &&
+             data.larvaeLocations is string && data.larvaeLocations.size() <= 300 &&
+             data.actionTaken is string && data.actionTaken.size() <= 300 &&
+             data.notes is string && data.notes.size() <= 500 &&
+             isValidCoordinates(data.latitude, data.longitude) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidPushNotification(data) {
+      return data.keys().hasAll([
+               'recipientId', 'senderId', 'reportId', 'reportTitle',
+               'newStatus', 'message', 'read', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'recipientId', 'senderId', 'reportId', 'reportTitle',
+               'newStatus', 'message', 'read', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidId(data.recipientId) &&
+             isValidId(data.senderId) &&
+             isValidId(data.reportId) &&
+             data.reportTitle is string && data.reportTitle.size() >= 1 && data.reportTitle.size() <= 120 &&
+             data.newStatus is string && data.newStatus.size() <= 16 && data.newStatus in [
+               'menunggu', 'diverifikasi', 'diproses', 'selesai', 'ditolak'
+             ] &&
+             data.message is string && data.message.size() >= 3 && data.message.size() <= 500 &&
+             data.read is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidAgencyDispatch(data) {
+      return data.keys().hasAll([
+               'authorId', 'reportId', 'agencyCode', 'agencyName',
+               'priority', 'dispatchStatus', 'referenceNumber',
+               'payloadSummary', 'rwCode', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'authorId', 'reportId', 'agencyCode', 'agencyName',
+               'priority', 'dispatchStatus', 'referenceNumber',
+               'payloadSummary', 'rwCode', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidId(data.authorId) &&
+             isValidId(data.reportId) &&
+             data.agencyCode is string && data.agencyCode.size() <= 32 && data.agencyCode in [
+               'PUSKESMAS_RW013', 'DINAS_PU', 'DLH_KEBERSIHAN',
+               'DINAS_SDA', 'SATPOL_PP', 'DISHUB_PJU'
+             ] &&
+             data.agencyName is string && data.agencyName.size() >= 2 && data.agencyName.size() <= 100 &&
+             data.priority is string && data.priority.size() <= 16 && data.priority in [
+               'normal', 'tinggi', 'darurat'
+             ] &&
+             data.dispatchStatus is string && data.dispatchStatus.size() <= 24 && data.dispatchStatus in [
+               'terkirim', 'diterima_instansi', 'ditindaklanjuti', 'selesai'
+             ] &&
+             data.referenceNumber is string && data.referenceNumber.size() >= 5 && data.referenceNumber.size() <= 60 &&
+             data.referenceNumber.matches('^[A-Z0-9\\-]+$') &&
+             data.payloadSummary is string && data.payloadSummary.size() >= 5 && data.payloadSummary.size() <= 500 &&
+             data.rwCode is string && data.rwCode.size() == 5 && data.rwCode == 'RW013' &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules (Ordered: Auth -> Static Validation -> Relational DB Lookups) ---
+
+    // Public User Profile (No PII)
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserPublic(incoming()) &&
+                       incoming().uid == request.auth.uid &&
+                       incoming().uid == userId &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+                       isValidId(userId) &&
+                       isValidUserPublic(incoming()) &&
+                       incoming().uid == existing().uid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'rt', 'updatedAt']) &&
+                       (isOwner(userId) || isAdmin());
+
+      allow delete: if false;
+
+      // Isolated PII Subcollection (Master Gate + Owner/Admin Only)
+      match /private/{docId} {
+        allow get: if isVerifiedUser() &&
+                      isValidId(userId) &&
+                      isValidId(docId) &&
+                      docId == 'info' &&
+                      (isOwner(userId) || isAdmin()) &&
+                      get(/databases/$(database)/documents/users/$(userId)).data.uid == userId;
+
+        allow list: if false;
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(docId) &&
+                         docId == 'info' &&
+                         isValidUserPrivate(incoming()) &&
+                         incoming().uid == request.auth.uid &&
+                         incoming().uid == userId &&
+                         incoming().updatedAt == request.time &&
+                         get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid;
+
+        allow update: if isVerifiedUser() &&
+                         isValidId(userId) &&
+                         isValidId(docId) &&
+                         docId == 'info' &&
+                         isValidUserPrivate(incoming()) &&
+                         incoming().uid == existing().uid &&
+                         incoming().updatedAt == request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['email', 'phone', 'updatedAt']) &&
+                         (isOwner(userId) || isAdmin()) &&
+                         get(/databases/$(database)/documents/users/$(userId)).data.uid == userId;
+
+        allow delete: if false;
+      }
+    }
+
+    // Trusted Admin RBAC Registry
+    match /admins/{adminUid} {
+      allow get: if isVerifiedUser() && isValidId(adminUid) && (request.auth.uid == adminUid || isBootstrappedAdmin());
+      allow list: if false;
+
+      allow create: if isBootstrappedAdmin() &&
+                       isValidId(adminUid) &&
+                       isValidAdminRecord(incoming()) &&
+                       incoming().uid == adminUid &&
+                       incoming().grantedBy == request.auth.uid &&
+                       incoming().createdAt == request.time &&
+                       exists(/databases/$(database)/documents/users/$(adminUid));
+
+      allow update: if false;
+      allow delete: if isBootstrappedAdmin() && isValidId(adminUid);
+    }
+
+    // Citizen Incident Reports
+    match /reports/{reportId} {
+      allow get: if isVerifiedUser() &&
+                    isValidId(reportId) && (
+                      existing().authorId == request.auth.uid ||
+                      (existing().rwCode == 'RW013' && existing().visibility == 'public') ||
+                      isAdmin()
+                    );
+
+      // Secure List Query: zero get()/exists() inside list; evaluates resource.data directly
+      allow list: if isVerifiedUser() && (
+                     existing().authorId == request.auth.uid ||
+                     (existing().rwCode == 'RW013' && existing().visibility == 'public') ||
+                     isBootstrappedAdmin()
+                   );
+
+      allow create: if isVerifiedUser() &&
+                       isValidId(reportId) &&
+                       isValidCitizenReport(incoming()) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().status == 'menunggu' &&
+                       incoming().assignedAgency == '' &&
+                       incoming().adminNote == '' &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isVerifiedUser() &&
+                       isValidId(reportId) &&
+                       isValidCitizenReport(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().authorName == existing().authorName &&
+                       incoming().rwCode == existing().rwCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time && (
+                         // Action 1: Citizen edits own report before processing (Terminal State Locked)
+                         (
+                           existing().authorId == request.auth.uid &&
+                           existing().status == 'menunggu' &&
+                           incoming().status == 'menunggu' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'urgency', 'visibility', 'updatedAt'])
+                         ) ||
+                         // Action 2: Admin Triage & Agency Assignment (Includes override for terminal corrections)
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'assignedAgency', 'adminNote', 'urgency', 'category', 'updatedAt']) &&
+                           isAdmin()
+                         )
+                       );
+
+      allow delete: if isVerifiedUser() &&
+                       isValidId(reportId) && (
+                         (existing().authorId == request.auth.uid && existing().status == 'menunggu') ||
+                         isAdmin()
+                       );
+    }
+
+    // Kampung Bebas Jentik RW 013 Logs
+    match /jumantikLogs/{logId} {
+      allow get: if isVerifiedUser() &&
+                    isValidId(logId) &&
+                    (existing().rwCode == 'RW013' || existing().authorId == request.auth.uid || isAdmin());
+
+      allow list: if isVerifiedUser() &&
+                     (existing().rwCode == 'RW013' || existing().authorId == request.auth.uid || isBootstrappedAdmin());
+
+      allow create: if isVerifiedUser() &&
+                       isValidId(logId) &&
+                       isValidJumantikLog(incoming()) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isVerifiedUser() &&
+                       isValidId(logId) &&
+                       isValidJumantikLog(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().rwCode == existing().rwCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time && (
+                         (
+                           existing().authorId == request.auth.uid &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'housesInspected', 'housesWithLarvae', 'larvaeLocations',
+                             'actionTaken', 'notes', 'updatedAt'
+                           ])
+                         ) ||
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'rt', 'officerName', 'housesInspected', 'housesWithLarvae',
+                             'larvaeLocations', 'actionTaken', 'notes', 'updatedAt'
+                           ]) &&
+                           isAdmin()
+                         )
+                       );
+
+      allow delete: if isVerifiedUser() && isValidId(logId) && isAdmin();
+    }
+
+    // Real-Time Push Notifications
+    match /notifications/{notificationId} {
+      allow get: if isVerifiedUser() &&
+                    isValidId(notificationId) &&
+                    (existing().recipientId == request.auth.uid || isAdmin());
+
+      allow list: if isVerifiedUser() &&
+                     (existing().recipientId == request.auth.uid || isBootstrappedAdmin());
+
+      allow create: if isVerifiedUser() &&
+                       isValidId(notificationId) &&
+                       isValidPushNotification(incoming()) &&
+                       incoming().senderId == request.auth.uid &&
+                       incoming().read == false &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       isAdmin() &&
+                       exists(/databases/$(database)/documents/users/$(incoming().recipientId)) &&
+                       exists(/databases/$(database)/documents/reports/$(incoming().reportId));
+
+      allow update: if isVerifiedUser() &&
+                       isValidId(notificationId) &&
+                       isValidPushNotification(incoming()) &&
+                       incoming().recipientId == existing().recipientId &&
+                       incoming().senderId == existing().senderId &&
+                       incoming().reportId == existing().reportId &&
+                       incoming().reportTitle == existing().reportTitle &&
+                       incoming().newStatus == existing().newStatus &&
+                       incoming().message == existing().message &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt']) && (
+                         // Action: Recipient marks unread notification as read (Terminal State Locked once read == true)
+                         (
+                           existing().recipientId == request.auth.uid &&
+                           existing().read == false &&
+                           incoming().read == true
+                         ) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isVerifiedUser() &&
+                       isValidId(notificationId) &&
+                       (existing().recipientId == request.auth.uid || isAdmin());
+    }
+
+    // Inter-Agency API Dispatches
+    match /agencyDispatches/{dispatchId} {
+      allow get: if isVerifiedUser() &&
+                    isValidId(dispatchId) &&
+                    (existing().rwCode == 'RW013' || isAdmin());
+
+      allow list: if isVerifiedUser() &&
+                     (existing().rwCode == 'RW013' || isBootstrappedAdmin());
+
+      allow create: if isVerifiedUser() &&
+                       isValidId(dispatchId) &&
+                       isValidAgencyDispatch(incoming()) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().createdAt == request.time &&
+                       incoming().updatedAt == request.time &&
+                       isAdmin() &&
+                       exists(/databases/$(database)/documents/reports/$(incoming().reportId));
+
+      allow update: if isVerifiedUser() &&
+                       isValidId(dispatchId) &&
+                       isValidAgencyDispatch(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().reportId == existing().reportId &&
+                       incoming().referenceNumber == existing().referenceNumber &&
+                       incoming().rwCode == existing().rwCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt == request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'dispatchStatus', 'priority', 'payloadSummary', 'updatedAt'
+                       ]) &&
+                       isAdmin();
+
+      allow delete: if isVerifiedUser() && isValidId(dispatchId) && isAdmin();
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "SiagaWarga RW 013 — Pelaporan Warga & Jumantik Terpadu",
+  "description": "Sistem pelaporan warga real-time berbasis foto dan GPS otomatis, pemantauan Kampung Bebas Jentik (ABJ RW 013), dashboard admin, analisis area rawan, dan integrasi API instansi.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

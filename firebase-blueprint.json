@@ -1,0 +1,509 @@
+{
+  "entities": {
+    "UserPublic": {
+      "title": "UserPublic",
+      "description": "Public citizen or officer profile without sensitive PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Display name shown on reports."
+        },
+        "rt": {
+          "type": "string",
+          "enum": [
+            "RT 001",
+            "RT 002",
+            "RT 003",
+            "RT 004",
+            "RT 005",
+            "RT 006",
+            "RT 007",
+            "RT 008",
+            "RT 009",
+            "RT 010"
+          ],
+          "description": "Default neighborhood unit within RW 013 (10 RT)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile update server timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "rt", "createdAt", "updatedAt"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Isolated private PII document accessible strictly to the owner or admin.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 24
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "phone", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted RBAC document granting admin privileges to a specific user UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "grantedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "grantedBy", "role", "createdAt"]
+    },
+    "CitizenReport": {
+      "title": "CitizenReport",
+      "description": "Real-time citizen incident report with photo evidence, automatic GPS coordinates, category, and triage state.",
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1500
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "kesehatan_jentik",
+            "infrastruktur",
+            "kebersihan",
+            "drainase_banjir",
+            "keamanan",
+            "fasilitas_umum"
+          ]
+        },
+        "urgency": {
+          "type": "string",
+          "enum": ["rendah", "sedang", "tinggi", "darurat"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["menunggu", "diverifikasi", "diproses", "selesai", "ditolak"]
+        },
+        "rt": {
+          "type": "string",
+          "enum": [
+            "RT 001",
+            "RT 002",
+            "RT 003",
+            "RT 004",
+            "RT 005",
+            "RT 006",
+            "RT 007",
+            "RT 008",
+            "RT 009",
+            "RT 010"
+          ]
+        },
+        "rwCode": {
+          "type": "string",
+          "enum": ["RW013"],
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public", "private"]
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "photoDataUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 750000
+        },
+        "assignedAgency": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "adminNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "title",
+        "description",
+        "category",
+        "urgency",
+        "status",
+        "rt",
+        "rwCode",
+        "visibility",
+        "latitude",
+        "longitude",
+        "address",
+        "photoDataUrl",
+        "assignedAgency",
+        "adminNote",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "JumantikLog": {
+      "title": "JumantikLog",
+      "description": "Kampung Bebas Jentik RW 013 inspection record per RT for automatic ABJ calculation.",
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "inspectionDate": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "weekKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 8,
+          "pattern": "^[0-9]{4}-W[0-9]{2}$"
+        },
+        "rt": {
+          "type": "string",
+          "enum": [
+            "RT 001",
+            "RT 002",
+            "RT 003",
+            "RT 004",
+            "RT 005",
+            "RT 006",
+            "RT 007",
+            "RT 008",
+            "RT 009",
+            "RT 010"
+          ]
+        },
+        "rwCode": {
+          "type": "string",
+          "enum": ["RW013"],
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "officerName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "housesInspected": {
+          "type": "integer"
+        },
+        "housesWithLarvae": {
+          "type": "integer"
+        },
+        "larvaeLocations": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "actionTaken": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "authorId",
+        "inspectionDate",
+        "weekKey",
+        "rt",
+        "rwCode",
+        "officerName",
+        "housesInspected",
+        "housesWithLarvae",
+        "larvaeLocations",
+        "actionTaken",
+        "notes",
+        "latitude",
+        "longitude",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PushNotification": {
+      "title": "PushNotification",
+      "description": "Real-time status update notification delivered to a report author.",
+      "type": "object",
+      "properties": {
+        "recipientId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reportTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "newStatus": {
+          "type": "string",
+          "enum": ["menunggu", "diverifikasi", "diproses", "selesai", "ditolak"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 500
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "recipientId",
+        "senderId",
+        "reportId",
+        "reportTitle",
+        "newStatus",
+        "message",
+        "read",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AgencyDispatch": {
+      "title": "AgencyDispatch",
+      "description": "API dispatch log connecting citizen reports to municipal agencies.",
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "agencyCode": {
+          "type": "string",
+          "enum": [
+            "PUSKESMAS_RW013",
+            "DINAS_PU",
+            "DLH_KEBERSIHAN",
+            "DINAS_SDA",
+            "SATPOL_PP",
+            "DISHUB_PJU"
+          ]
+        },
+        "agencyName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["normal", "tinggi", "darurat"]
+        },
+        "dispatchStatus": {
+          "type": "string",
+          "enum": ["terkirim", "diterima_instansi", "ditindaklanjuti", "selesai"]
+        },
+        "referenceNumber": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 60,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "payloadSummary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 500
+        },
+        "rwCode": {
+          "type": "string",
+          "enum": ["RW013"],
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "authorId",
+        "reportId",
+        "agencyCode",
+        "agencyName",
+        "priority",
+        "dispatchStatus",
+        "referenceNumber",
+        "payloadSummary",
+        "rwCode",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublic" },
+      "description": "Public citizen/officer profile records without PII."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Isolated PII subcollection (email, phone) accessible only to owner or admin."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Trusted admin RBAC registry."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/CitizenReport" },
+      "description": "Real-time citizen reports with photos, GPS coordinates, and triage states."
+    },
+    "/jumantikLogs/{logId}": {
+      "schema": { "$ref": "#/entities/JumantikLog" },
+      "description": "Kampung Bebas Jentik RW 013 inspection records per RT."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/PushNotification" },
+      "description": "Real-time status notifications for citizens."
+    },
+    "/agencyDispatches/{dispatchId}": {
+      "schema": { "$ref": "#/entities/AgencyDispatch" },
+      "description": "Inter-agency API dispatch logs."
+    }
+  }
+}
