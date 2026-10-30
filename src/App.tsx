@@ -17,23 +17,35 @@ import {
   where,
 } from 'firebase/firestore';
 import {
-  Activity,
+  ArrowLeft,
   BarChart3,
   Bell,
   BellRing,
   Camera,
   CheckCircle2,
+  ChevronRight,
   ClipboardList,
+  CloudRain,
+  Construction,
+  Droplets,
   Globe,
   Grid2x2,
-  LayoutDashboard,
+  Home,
+  Image as ImageIcon,
+  LayoutGrid,
+  Lightbulb,
   Loader2,
   LogIn,
   LogOut,
+  Map as MapIcon,
   MapPin,
+  Maximize2,
   Menu,
-  Plus,
+  Minimize2,
+  ShieldAlert,
   ShieldCheck,
+  Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import {
@@ -87,27 +99,66 @@ type NavTab =
   | 'api_gateway';
 
 const TAB_LABELS: Record<NavTab, string> = {
-  overview: 'Beranda & Peta Kejadian',
-  per_rt: 'Mode Laporan Per RT (10 RT)',
+  overview: 'SiagaWarga RW 013',
+  per_rt: 'Mode 10 Wilayah RT',
   create_report: 'Kirim Laporan Warga',
-  jumantik: 'Kampung Bebas Jentik',
+  jumantik: 'Bebas Jentik (ABJ)',
   analytics: 'Analisis Area Rawan',
   admin: 'Dashboard Admin',
-  api_gateway: 'Integrasi API Instansi',
+  api_gateway: 'Gateway API Instansi',
 };
+
+const CATEGORY_CIRCLE_ICONS: Array<{
+  id: ReportCategory;
+  short: string;
+  icon: React.ReactNode;
+}> = [
+  {
+    id: 'kesehatan_jentik',
+    short: 'Jentik',
+    icon: <Droplets className="w-4 h-4" />,
+  },
+  {
+    id: 'drainase_banjir',
+    short: 'Banjir',
+    icon: <CloudRain className="w-4 h-4" />,
+  },
+  {
+    id: 'infrastruktur',
+    short: 'Jalan',
+    icon: <Construction className="w-4 h-4" />,
+  },
+  {
+    id: 'kebersihan',
+    short: 'Sampah',
+    icon: <Trash2 className="w-4 h-4" />,
+  },
+  {
+    id: 'keamanan',
+    short: 'Aman',
+    icon: <ShieldAlert className="w-4 h-4" />,
+  },
+  {
+    id: 'fasilitas_umum',
+    short: 'PJU',
+    icon: <Lightbulb className="w-4 h-4" />,
+  },
+];
 
 export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [welcomeStep, setWelcomeStep] = useState<'splash' | 'signin'>('splash');
 
   const [userProfile, setUserProfile] = useState<UserPublicProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
 
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [frameExpanded, setFrameExpanded] = useState(false);
+  const [menuSheetOpen, setMenuSheetOpen] = useState(false);
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
 
   // Real-time Collections State
@@ -118,7 +169,9 @@ export default function App() {
   const [dispatches, setDispatches] = useState<AgencyDispatchItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Overview Filter & Modal States
+  // Overview Hero Carousel, Map & Filter States
+  const [heroSlide, setHeroSlide] = useState<number>(0);
+  const [showOverviewMap, setShowOverviewMap] = useState<boolean>(true);
   const [feedScope, setFeedScope] = useState<'all' | 'per_rt' | 'mine'>('all');
   const [overviewSelectedRt, setOverviewSelectedRt] = useState<RtUnit>('RT 001');
   const [feedCategory, setFeedCategory] = useState<'ALL' | ReportCategory>('ALL');
@@ -438,99 +491,169 @@ export default function App() {
     }
   };
 
+  // Loading Screen inside Centered Phone Frame
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex items-center gap-2.5 text-sm font-medium text-slate-600">
-          <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
-          <span>Menyiapkan Ruang Kerja SiagaWarga RW 013...</span>
+      <div className="min-h-screen bg-[#e2e8da] flex items-center justify-center sm:p-6">
+        <div className="w-full max-w-[420px] min-h-screen sm:min-h-[820px] bg-[#a5cf4c] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl flex flex-col items-center justify-center p-8 text-center space-y-4">
+          <div className="w-16 h-16 rounded-3xl bg-[#586826] text-[#dcecc3] flex items-center justify-center">
+            <Loader2 className="w-7 h-7 animate-spin" />
+          </div>
+          <p className="text-sm font-bold text-[#263015]">SiagaWarga RW 013</p>
+          <p className="text-xs text-[#3f4d1b]">Menyiapkan aplikasi pelaporan warga...</p>
         </div>
       </div>
     );
   }
 
-  // Unauthenticated Civic Portal Landing
+  // Unauthenticated Flow: Reference Screen 1 (Matcha Splash) -> Reference Screen 2 (Clean Off-White Sign-In)
   if (!authUser || !userProfile) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex flex-col">
-        {/* Strict 3-Zone Top Bar Contract */}
-        <header className="flex items-center justify-between gap-8 px-6 lg:px-12 py-4 border-b border-slate-200">
-          <a
-            href="#beranda"
-            className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
-          >
-            SiagaWarga RW 013
-          </a>
-
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <a
-              href="#fitur"
-              className="hover:text-slate-900 transition-colors whitespace-nowrap shrink-0"
-            >
-              Pelaporan Real-Time
-            </a>
-            <a
-              href="#jumantik"
-              className="hover:text-slate-900 transition-colors whitespace-nowrap shrink-0"
-            >
-              Bebas Jentik
-            </a>
-            <a
-              href="#analitik"
-              className="hover:text-slate-900 transition-colors whitespace-nowrap shrink-0"
-            >
-              Peta Rawan
-            </a>
-            <a
-              href="#api"
-              className="hover:text-slate-900 transition-colors whitespace-nowrap shrink-0"
-            >
-              API Instansi
-            </a>
-          </nav>
-
-          <div className="flex items-center shrink-0">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={signingIn}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50"
-            >
-              {signingIn ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <LogIn className="w-3.5 h-3.5" />
-              )}
-              <span>Masuk Warga / Petugas</span>
-            </button>
-          </div>
-        </header>
-
-        <main id="beranda" className="flex-1 max-w-6xl w-full mx-auto px-6 lg:px-8 py-14 space-y-16">
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch">
-            <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
-              <p className="text-xs font-medium text-slate-500">
-                Sistem Pelaporan Terpadu Lingkungan RW 013 · 10 Wilayah RT (RT 001 – RT 010)
-              </p>
-              <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-slate-900 leading-tight [text-wrap:balance]">
-                Laporkan kejadian sekitar secara real-time dengan foto & lokasi GPS presisi.
-              </h1>
-              <p className="text-base text-slate-600 leading-relaxed max-w-xl">
-                Platform kolaborasi warga, kader Jumantik Kampung Bebas Jentik, pengurus RW 013, dan instansi pemerintah daerah untuk mempercepat penanganan infrastruktur, kebersihan, keamanan, hingga pencegahan DBD.
-              </p>
-
-              {authError && (
-                <div className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800 max-w-md">
-                  {authError}
+      <div className="min-h-screen bg-[#e2e8da] flex flex-col items-center justify-center sm:p-6">
+        <div
+          className={`w-full max-w-[420px] min-h-screen sm:min-h-[830px] sm:max-h-[880px] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl overflow-hidden flex flex-col justify-between transition-colors duration-200 ${
+            welcomeStep === 'splash' ? 'bg-[#a5cf4c]' : 'bg-[#f7f9f4]'
+          }`}
+        >
+          {welcomeStep === 'splash' ? (
+            /* Reference Screen 1: Vibrant Matcha Splash Screen */
+            <div className="flex-1 flex flex-col justify-between p-7 text-center">
+              <div className="pt-1 space-y-2">
+                <div className="w-16 h-1 rounded-full bg-white/75 mx-auto" />
+                <div className="flex items-center justify-between text-[11px] font-mono text-[#3f4d1b] pt-1">
+                  <span>RW 013</span>
+                  <span>10 RT · LIVE GPS</span>
                 </div>
-              )}
+              </div>
 
-              <div className="pt-1 flex flex-wrap items-center gap-4">
+              {/* Centered Olive Emblem + Brand Title & Slogan */}
+              <div className="my-auto py-8 flex flex-col items-center space-y-4">
+                <div className="w-24 h-24 rounded-3xl bg-[#586826] text-[#a5cf4c] flex items-center justify-center shadow-md">
+                  <ShieldCheck className="w-12 h-12 stroke-[2.2]" />
+                </div>
+
+                <div className="space-y-1">
+                  <h1 className="text-2xl font-bold tracking-tight text-[#263015]">
+                    SiagaWarga RW 013
+                  </h1>
+                  <p className="text-xs font-medium text-[#3f4d1b]">
+                    Pelaporan Warga &amp; Kampung Bebas Jentik
+                  </p>
+                </div>
+
+                <p className="text-xs text-[#263015]/85 max-w-[270px] leading-relaxed">
+                  Kirim foto kejadian real-time, kunci titik GPS otomatis, pantau status via push, dan kelola 10 RT terpadu.
+                </p>
+              </div>
+
+              {/* Two Stacked Full-Width Olive Pill Buttons at Bottom */}
+              <div className="space-y-3 pb-1">
+                <button
+                  type="button"
+                  onClick={() => setWelcomeStep('signin')}
+                  className="w-full min-h-[48px] px-6 py-3 text-sm font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  Masuk Aplikasi
+                </button>
+
+                <a
+                  href="/assets/aistudio/ABJ_RW_013___Kampung_Bebas_Jentik_374cf83d.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full min-h-[46px] px-6 py-3 text-xs font-semibold text-[#dcecc3] bg-[#48561e] rounded-full hover:bg-[#3b4718] active:scale-[0.98] transition-all flex items-center justify-center"
+                >
+                  Lihat Pedoman ABJ RW 013
+                </a>
+
+                <div className="pt-2">
+                  <div className="w-28 h-1 rounded-full bg-[#586826]/65 mx-auto" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Reference Screen 2: Crisp Off-White Sign-In Screen */
+            <div className="flex-1 flex flex-col justify-between p-7">
+              <div className="space-y-3">
+                <div className="w-16 h-1 rounded-full bg-[#cbe0b0] mx-auto" />
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setWelcomeStep('splash')}
+                    className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-semibold text-[#586826] hover:text-[#263015] cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Kembali</span>
+                  </button>
+                  <span className="text-[11px] font-mono text-[#5b6649]">RW 013 · 10 RT</span>
+                </div>
+              </div>
+
+              {/* Centered Clean Sign-In Block (Reference Screen 2) */}
+              <div className="my-auto py-6 space-y-5 text-center">
+                <div className="space-y-1.5">
+                  <h2 className="text-2xl font-bold text-[#586826] tracking-tight">
+                    Masuk Warga
+                  </h2>
+                  <p className="text-xs text-[#5b6649]">
+                    Akses terverifikasi warga, kader Jumantik, &amp; pengurus RW 013
+                  </p>
+                </div>
+
+                {/* Soft Tinted Pill Bars Inspired by Screen 2 */}
+                <div className="space-y-3 text-left">
+                  <div className="bg-[#e6f2d3]/85 border border-[#cbe0b0] rounded-full px-4 py-3 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-[#263015]">Lingkungan RW 013</span>
+                      <span className="font-mono text-[11px] text-[#586826]">RT 001 – RT 010</span>
+                    </div>
+                    <div className="w-2/3 h-1 rounded-full bg-[#586826]" />
+                  </div>
+
+                  <div className="bg-[#e6f2d3]/85 border border-[#cbe0b0] rounded-full px-4 py-3 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-[#263015]">Identitas Terlindungi</span>
+                      <span className="font-mono text-[11px] text-[#586826]">Google OAuth</span>
+                    </div>
+                    <div className="w-1/2 h-1 rounded-full bg-[#a5cf4c]" />
+                  </div>
+                </div>
+
+                {/* Compact Centered Olive Pill CTA */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={signingIn}
+                    className="min-h-[42px] inline-flex items-center justify-center gap-2 px-7 py-2 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {signingIn ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <LogIn className="w-3.5 h-3.5" />
+                    )}
+                    <span>Log In Google</span>
+                  </button>
+                </div>
+
+                {authError && (
+                  <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-800 text-left">
+                    {authError}
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Full-Width Primary Olive Button & Subtle Feature Lines */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-end gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#586826]" />
+                  <span className="w-12 h-1.5 rounded-full bg-[#a5cf4c]" />
+                </div>
+
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={signingIn}
-                  className="inline-flex items-center gap-2.5 px-6 py-3 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  className="w-full min-h-[48px] inline-flex items-center justify-center gap-2.5 px-6 py-3 text-sm font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {signingIn ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -539,689 +662,594 @@ export default function App() {
                   )}
                   <span>Masuk dengan Akun Google</span>
                 </button>
-                <a
-                  href="/assets/aistudio/ABJ_RW_013___Kampung_Bebas_Jentik_374cf83d.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-slate-700 hover:text-slate-900 underline underline-offset-4 whitespace-nowrap"
-                >
-                  Lihat Pedoman ABJ RW 013
-                </a>
-              </div>
-            </div>
 
-            <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-6 flex flex-col justify-between space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-base font-semibold text-slate-900">
-                  Alur Tindak Lanjut Terverifikasi
-                </h2>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Setiap laporan terhubung langsung ke pusat pemantauan pengurus RW dan antarmuka API instansi terkait.
-                </p>
-              </div>
+                <div className="space-y-1 text-center text-[11px] text-[#5b6649]">
+                  <p>Foto Kejadian Real-Time · GPS Presisi · Push Status</p>
+                  <p className="text-[#586826] font-medium">
+                    Rekap 10 RT · Surveilans ABJ · API Instansi
+                  </p>
+                </div>
 
-              <div className="divide-y divide-slate-200 text-xs">
-                <div className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">01. Bukti Foto & Titik GPS Otomatis</p>
-                    <p className="text-slate-500 mt-0.5">
-                      Kamera langsung dengan kompresi cepat serta reverse-geocoding alamat jalan otomatis.
-                    </p>
-                  </div>
-                  <span className="font-mono text-slate-400 shrink-0">&lt; 10 dtk</span>
-                </div>
-                <div className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">02. Triase Kategori & Notifikasi Push</p>
-                    <p className="text-slate-500 mt-0.5">
-                      Pemberitahuan instan ke perangkat pelapor setiap kali status laporan diperbarui petugas.
-                    </p>
-                  </div>
-                  <span className="font-mono text-slate-400 shrink-0">Real-time</span>
-                </div>
-                <div className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">03. Mode Laporan 10 RT & Surveilans ABJ</p>
-                    <p className="text-slate-500 mt-0.5">
-                      Rekap otomatis per RT (RT 001–RT 010), Kampung Bebas Jentik, dan pemetaan zona risiko.
-                    </p>
-                  </div>
-                  <span className="font-mono text-slate-400 shrink-0">10 RT</span>
-                </div>
-                <div className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">04. Gateway API Instansi Terkait</p>
-                    <p className="text-slate-500 mt-0.5">
-                      Format Open311-ID, GeoJSON RFC 7946, dan Webhook HMAC-SHA256 untuk Puskesmas & Dinas.
-                    </p>
-                  </div>
-                  <span className="font-mono text-slate-400 shrink-0">REST v1</span>
+                <div className="pt-1">
+                  <div className="w-28 h-1 rounded-full bg-[#586826]/65 mx-auto" />
                 </div>
               </div>
             </div>
-          </section>
-
-          <section
-            id="fitur"
-            className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-8 border-t border-slate-200"
-          >
-            <div className="space-y-1.5">
-              <p className="text-xs font-mono text-slate-500">01 · KATEGORISASI</p>
-              <h3 className="text-sm font-semibold text-slate-900">6 Sektor Layanan Publik</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Kesehatan/Jentik, Drainase/Banjir, Infrastruktur Jalan, Kebersihan, Keamanan, dan Fasilitas PJU.
-              </p>
-            </div>
-            <div id="jumantik" className="space-y-1.5">
-              <p className="text-xs font-mono text-slate-500">02 · JUMANTIK RW 013</p>
-              <h3 className="text-sm font-semibold text-slate-900">Rekap ABJ Otomatis</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Pencatatan pemeriksaan rumah per RT dan per minggu sesuai standar baku Kemenkes ≥ 95%.
-              </p>
-            </div>
-            <div id="analitik" className="space-y-1.5">
-              <p className="text-xs font-mono text-slate-500">03 · PEMETAAN SPASIAL</p>
-              <h3 className="text-sm font-semibold text-slate-900">Deteksi Jam & Zona Rawan</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Analisis tren 14 hari, distribusi jam rawan kejadian, dan matriks prioritas intervensi RT.
-              </p>
-            </div>
-            <div id="api" className="space-y-1.5">
-              <p className="text-xs font-mono text-slate-500">04 · INTEROPERABILITAS</p>
-              <h3 className="text-sm font-semibold text-slate-900">Akses API Instansi</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Endpoint GeoJSON & ringkasan surveilans yang siap dikonsumsi sistem GIS dinas terkait.
-              </p>
-            </div>
-          </section>
-        </main>
-
-        <footer className="px-6 lg:px-12 py-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <span>SiagaWarga RW 013 · Sistem Pelaporan Warga & Kampung Bebas Jentik</span>
-          <span>Data dilindungi kontrol akses terverifikasi & isolasi privasi warga</span>
-        </footer>
+          )}
+        </div>
       </div>
     );
   }
 
-  // Authenticated SaaS Civic Workspace Layout
-  const navItems: Array<{ id: NavTab; label: string; icon: React.ReactNode }> = [
+  const openReportCount = allVisibleReports.filter(
+    (r) => r.status !== 'selesai' && r.status !== 'ditolak'
+  ).length;
+  const completedReportCount = allVisibleReports.filter((r) => r.status === 'selesai').length;
+
+  // Alternate screen background between Crisp Warm Off-White (#f7f9f4) and Soft Sage (#dcecc3) like the Reference Kit
+  const isSageScreen =
+    activeTab === 'create_report' || activeTab === 'jumantik' || activeTab === 'admin';
+
+  const heroCarouselSlides = [
+    {
+      id: 'slide-live',
+      kicker: 'PANTAUAN LINGKUNGAN RW 013',
+      title: `${allVisibleReports.length} Laporan Warga Real-Time`,
+      subtitle: `${openReportCount} sedang ditangani · ${completedReportCount} selesai diverifikasi`,
+      actionLabel: showOverviewMap ? 'Sembunyikan Peta' : 'Tampilkan Peta GPS',
+      onAction: () => setShowOverviewMap((v) => !v),
+      icon: <MapIcon className="w-8 h-8 text-[#a5cf4c]" />,
+    },
+    {
+      id: 'slide-abj',
+      kicker: 'KAMPUNG BEBAS JENTIK',
+      title: `Capaian ABJ ${cumulativeAbj === null ? 'Belum Cek' : `${cumulativeAbj}%`}`,
+      subtitle: 'Standar baku Kemenkes RI ≥ 95,0% di 10 wilayah RT',
+      actionLabel: 'Buka Modul Jumantik',
+      onAction: () => setActiveTab('jumantik'),
+      icon: <Droplets className="w-8 h-8 text-[#a5cf4c]" />,
+    },
+    {
+      id: 'slide-10rt',
+      kicker: 'KATALOG WILAYAH TERPADU',
+      title: 'Mode Laporan 10 RT',
+      subtitle: 'Rekapitulasi, peta kejadian, & unduh CSV RT 001 – RT 010',
+      actionLabel: 'Buka Grid 10 RT',
+      onAction: () => setActiveTab('per_rt'),
+      icon: <Grid2x2 className="w-8 h-8 text-[#a5cf4c]" />,
+    },
+    {
+      id: 'slide-trend',
+      kicker: 'PEMETAAN KERAWANAN & API',
+      title: 'Analisis Jam & Zona Rawan',
+      subtitle: 'Deteksi titik prioritas intervensi & gateway API dinas',
+      actionLabel: 'Lihat Analisis Rawan',
+      onAction: () => setActiveTab('analytics'),
+      icon: <BarChart3 className="w-8 h-8 text-[#a5cf4c]" />,
+    },
+  ];
+
+  const currentHero = heroCarouselSlides[heroSlide] || heroCarouselSlides[0];
+
+  const drawerModules: Array<{
+    id: NavTab;
+    label: string;
+    desc: string;
+    icon: React.ReactNode;
+    badge?: string;
+  }> = [
     {
       id: 'overview',
-      label: 'Beranda & Peta',
-      icon: <LayoutDashboard className="w-4 h-4" />,
+      label: 'Beranda & Peta Kejadian',
+      desc: 'Sorotan real-time, filter kategori bulat, & peta GPS',
+      icon: <Home className="w-4 h-4" />,
     },
     {
       id: 'per_rt',
-      label: 'Laporan Per RT (10 RT)',
+      label: 'Katalog Mode 10 RT (RT 001–010)',
+      desc: 'Grid kotak 10 RT, unduh CSV, & matriks perbandingan',
       icon: <Grid2x2 className="w-4 h-4" />,
     },
     {
       id: 'create_report',
-      label: 'Kirim Laporan',
+      label: 'Kirim Laporan Foto & GPS',
+      desc: 'Kamera langsung kotak 1:1 & deteksi alamat otomatis',
       icon: <Camera className="w-4 h-4" />,
     },
     {
       id: 'jumantik',
-      label: 'Bebas Jentik (ABJ)',
+      label: 'Kampung Bebas Jentik (ABJ)',
+      desc: 'Input pemeriksaan rumah kader Jumantik & rekap mingguan',
       icon: <ClipboardList className="w-4 h-4" />,
     },
     {
       id: 'analytics',
-      label: 'Analisis Area Rawan',
+      label: 'Analisis Tren & Area Rawan',
+      desc: 'Peta radius kerawanan, tren 14 hari, & jam rawan',
       icon: <BarChart3 className="w-4 h-4" />,
     },
     ...(isAdmin
       ? [
           {
             id: 'admin' as NavTab,
-            label: 'Dashboard Admin',
+            label: 'Dashboard Admin & Triase',
+            desc: 'Verifikasi laporan, kirim notifikasi push, & delegasi',
             icon: <ShieldCheck className="w-4 h-4" />,
+            badge: openReportCount > 0 ? `${openReportCount} aktif` : undefined,
           },
         ]
       : []),
     {
       id: 'api_gateway',
-      label: 'API Instansi Terkait',
+      label: 'Integrasi API Instansi Terkait',
+      desc: 'Endpoint GeoJSON, Open311-ID, & Webhook HMAC-SHA256',
       icon: <Globe className="w-4 h-4" />,
     },
   ];
 
-  const openReportCount = allVisibleReports.filter(
-    (r) => r.status !== 'selesai' && r.status !== 'ditolak'
-  ).length;
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
-      {/* Desktop Sidebar (256px) */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-white border-r border-slate-200 shrink-0 sticky top-0 h-screen">
-        <div className="px-5 py-4 border-b border-slate-200">
+    <div className="min-h-screen bg-[#e2e8da] flex flex-col items-center justify-center sm:py-5 sm:px-4">
+      {/* Subtle Outer Studio Frame Control (Desktop Only) */}
+      <div
+        className={`hidden sm:flex items-center justify-between w-full mb-2 px-3 text-xs text-[#5b6649] transition-all ${
+          frameExpanded ? 'max-w-4xl' : 'max-w-[420px]'
+        }`}
+      >
+        <span className="font-semibold text-[#263015]">
+          SiagaWarga RW 013 · {userProfile.rt}
+        </span>
+        <button
+          type="button"
+          onClick={() => setFrameExpanded((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-[#cbe0b0] text-[11px] font-semibold text-[#586826] hover:bg-white cursor-pointer"
+        >
+          {frameExpanded ? (
+            <>
+              <Minimize2 className="w-3 h-3" />
+              <span>Bingkai Ponsel (420px)</span>
+            </>
+          ) : (
+            <>
+              <Maximize2 className="w-3 h-3" />
+              <span>Perluas Layar</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Centered Mobile-App Phone Frame Shell */}
+      <div
+        className={`w-full ${
+          frameExpanded ? 'sm:max-w-4xl' : 'sm:max-w-[420px]'
+        } min-h-screen sm:min-h-0 sm:h-[856px] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl overflow-hidden flex flex-col relative transition-all duration-200 ${
+          isSageScreen ? 'bg-[#dcecc3]' : 'bg-[#f7f9f4]'
+        }`}
+      >
+        {/* Compact Sticky Top App Bar (54px — within 15% mobile sticky cap) */}
+        <header
+          className={`h-[54px] shrink-0 px-4 flex items-center justify-between gap-2 border-b z-20 ${
+            isSageScreen
+              ? 'bg-[#dcecc3]/95 border-[#cbe0b0]'
+              : 'bg-[#f7f9f4]/95 border-[#cbe0b0]'
+          } backdrop-blur-md`}
+        >
           <button
             type="button"
-            onClick={() => setActiveTab('overview')}
-            className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap cursor-pointer"
+            onClick={() => setMenuSheetOpen(true)}
+            aria-label="Buka menu modul dan profil"
+            className="min-h-[42px] min-w-[42px] rounded-full bg-[#586826]/10 text-[#263015] hover:bg-[#586826]/20 flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
-            SiagaWarga RW 013
+            <Menu className="w-4 h-4" />
           </button>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Pelaporan & Surveilans Lingkungan
-          </p>
-        </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                  active
-                    ? 'bg-slate-900 text-white font-semibold'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <span className="inline-flex items-center gap-2.5">
-                  {item.icon}
-                  <span>{item.label}</span>
-                </span>
-                {item.id === 'admin' && openReportCount > 0 && (
-                  <span
-                    className={`font-mono text-[11px] ${
-                      active ? 'text-slate-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {openReportCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Citizen Profile & Home RT Selector */}
-        <div className="p-4 border-t border-slate-200 space-y-3 text-xs">
-          <div className="space-y-1">
-            <p className="font-semibold text-slate-900 truncate">{userProfile.displayName}</p>
-            <p className="text-[11px] text-slate-500">
-              {isAdmin ? 'Petugas Admin RW 013' : 'Warga Terverifikasi'}
+          <div className="min-w-0 text-center">
+            <p className="text-sm font-bold text-[#263015] truncate">
+              {TAB_LABELS[activeTab]}
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <label htmlFor="sidebar-rt" className="text-[11px] text-slate-500">
-              Domisili:
-            </label>
-            <select
-              id="sidebar-rt"
-              value={userProfile.rt}
-              onChange={(e) => handleChangeHomeRt(e.target.value as RtUnit)}
-              className="px-2 py-1 text-xs font-mono bg-slate-50 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900"
-            >
-              {RT_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <button
             type="button"
-            onClick={() => signOut(auth)}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-red-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+            onClick={() => setNotifDrawerOpen(true)}
+            aria-label="Buka notifikasi push"
+            className="min-h-[42px] min-w-[42px] rounded-full bg-[#586826] text-[#f7f9f4] hover:bg-[#48561e] flex items-center justify-center relative transition-colors cursor-pointer shrink-0"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Keluar Sesi</span>
+            <Bell className="w-4 h-4" />
+            {unreadNotifCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#a5cf4c] text-[#263015] font-mono text-[10px] font-bold flex items-center justify-center border border-[#263015]">
+                {unreadNotifCount}
+              </span>
+            )}
           </button>
-        </div>
-      </aside>
-
-      {/* Mobile Navigation Drawer */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex bg-slate-950/40">
-          <div className="w-64 bg-white h-full border-r border-slate-200 flex flex-col">
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-base font-bold text-slate-900">SiagaWarga RW 013</span>
-              <button
-                type="button"
-                onClick={() => setMobileSidebarOpen(false)}
-                className="p-1 text-slate-500 hover:text-slate-900 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <nav className="flex-1 p-3 space-y-1">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium rounded-lg ${
-                    activeTab === item.id
-                      ? 'bg-slate-900 text-white font-semibold'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </nav>
-            <div className="p-4 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => signOut(auth)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 border border-slate-200 rounded-lg"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* SaaS Top Bar Contract: Breadcrumb on Left, max 2 Primary Actions on Right */}
-        <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-30">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={() => setMobileSidebarOpen(true)}
-              aria-label="Buka menu navigasi"
-              className="lg:hidden p-1.5 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg cursor-pointer"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2 text-xs text-slate-500 truncate">
-              <span className="font-medium text-slate-700 hidden sm:inline">RW 013</span>
-              <span aria-hidden="true" className="hidden sm:inline">
-                /
-              </span>
-              <span className="font-semibold text-slate-900 truncate">
-                {TAB_LABELS[activeTab]}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setNotifDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <Bell className="w-3.5 h-3.5" />
-              <span>Notifikasi</span>
-              {unreadNotifCount > 0 && (
-                <span className="font-mono font-bold text-red-700">({unreadNotifCount})</span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setReportPrefill(null);
-                setActiveTab('create_report');
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Lapor Kejadian</span>
-            </button>
-          </div>
         </header>
 
-        {/* Real-Time Push Notification Toast Banner */}
+        {/* Real-Time Push Notification Toast Banner Inside Frame */}
         {livePushToast && (
-          <div className="bg-slate-900 text-white px-4 sm:px-8 py-3 flex items-center justify-between gap-4 text-xs">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <BellRing className="w-4 h-4 text-amber-400 shrink-0" />
+          <div className="bg-[#263015] text-[#f7f9f4] px-4 py-2.5 flex items-center justify-between gap-3 text-xs shrink-0 z-20">
+            <div className="flex items-center gap-2 min-w-0">
+              <BellRing className="w-4 h-4 text-[#a5cf4c] shrink-0" />
               <p className="truncate">
-                <strong>Pembaruan Status ({STATUS_LABELS[livePushToast.newStatus]}):</strong>{' '}
-                {livePushToast.reportTitle} — {livePushToast.message}
+                <strong className="text-[#a5cf4c]">
+                  {STATUS_LABELS[livePushToast.newStatus]}:
+                </strong>{' '}
+                {livePushToast.reportTitle}
               </p>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setNotifDrawerOpen(true);
                   setLivePushToast(null);
                 }}
-                className="underline font-semibold whitespace-nowrap cursor-pointer"
+                className="underline font-semibold text-[#dcecc3] whitespace-nowrap cursor-pointer"
               >
-                Lihat
+                Buka
               </button>
               <button
                 type="button"
                 onClick={() => setLivePushToast(null)}
-                className="text-slate-300 hover:text-white cursor-pointer"
+                aria-label="Tutup banner notifikasi"
+                className="text-[#dcecc3] hover:text-white cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Viewport Workspace Container */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-8">
+        {/* Scrollable Screen Body */}
+        <main className="flex-1 overflow-y-auto phone-scroll px-4 py-4">
           {activeTab === 'overview' && (
-            <div className="space-y-8">
-              {/* Overview Header */}
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-5">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                    Pemantauan Real-Time Lingkungan RW 013
-                  </h1>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Pantau laporan warga sekitar, posisi geografis kejadian, dan capaian Kampung Bebas Jentik secara langsung.
-                  </p>
+            <div className="space-y-5">
+              {/* Top Feed Scope Pill Bar + Push Trigger */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1 p-1 bg-[#e6f2d3] border border-[#cbe0b0] rounded-full">
+                  {(
+                    [
+                      { id: 'all', label: 'Semua RW' },
+                      { id: 'per_rt', label: 'Per RT' },
+                      { id: 'mine', label: 'Milik Saya' },
+                    ] as const
+                  ).map((sc) => (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => setFeedScope(sc.id)}
+                      className={`min-h-[34px] px-3 py-1 text-xs font-semibold rounded-full transition-colors whitespace-nowrap cursor-pointer ${
+                        feedScope === sc.id
+                          ? 'bg-[#586826] text-[#f7f9f4]'
+                          : 'text-[#5b6649] hover:text-[#263015]'
+                      }`}
+                    >
+                      {sc.label}
+                    </button>
+                  ))}
                 </div>
 
-                {browserPushPerm === 'default' && (
+                {browserPushPerm === 'default' ? (
                   <button
                     type="button"
                     onClick={handleRequestBrowserPush}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
+                    className="min-h-[36px] inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold text-[#263015] bg-[#a5cf4c] rounded-full hover:opacity-95 whitespace-nowrap shrink-0 cursor-pointer"
                   >
-                    <BellRing className="w-3.5 h-3.5" />
-                    <span>Aktifkan Push Browser</span>
+                    <BellRing className="w-3 h-3" />
+                    <span>Push</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setMenuSheetOpen(true)}
+                    className="min-h-[36px] px-3 py-1 text-[11px] font-mono font-semibold text-[#586826] bg-[#e6f2d3] border border-[#cbe0b0] rounded-full whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    {userProfile.rt}
                   </button>
                 )}
               </div>
 
-              {/* 4-Column Metric Strip */}
-              <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-                  <p className="text-xs text-slate-500">Total Laporan Warga</p>
-                  <p className="text-3xl font-bold font-mono tabular-nums text-slate-900">
-                    {allVisibleReports.length}
-                  </p>
-                  <p className="text-xs text-slate-500">Tersinkronisasi otomatis</p>
+              {/* Reference Screens 3 & 4 Motif: Featured Square/Rounded Olive Card Carousel + Pagination Dots */}
+              <section aria-label="Sorotan Utama RW 013" className="space-y-2.5">
+                <div className="bg-[#586826] text-[#f7f9f4] rounded-3xl p-5 flex items-center justify-between gap-4 shadow-xs">
+                  <div className="space-y-2 min-w-0">
+                    <p className="text-[10px] font-mono tracking-wide text-[#a5cf4c]">
+                      {currentHero.kicker}
+                    </p>
+                    <h2 className="text-lg font-bold leading-snug [text-wrap:balance]">
+                      {currentHero.title}
+                    </h2>
+                    <p className="text-xs text-[#dcecc3]/90 leading-relaxed">
+                      {currentHero.subtitle}
+                    </p>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={currentHero.onAction}
+                        className="min-h-[38px] inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-[#263015] bg-[#a5cf4c] rounded-full hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        <span>{currentHero.actionLabel}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Iconic Square Media Emblem inside Olive Card */}
+                  <div className="w-20 h-20 rounded-2xl bg-[#48561e] border-2 border-[#dcecc3]/35 flex items-center justify-center shrink-0">
+                    {currentHero.icon}
+                  </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-                  <p className="text-xs text-slate-500">Sedang Ditangani</p>
-                  <p className="text-3xl font-bold font-mono tabular-nums text-amber-700">
-                    {openReportCount}
-                  </p>
-                  <p className="text-xs text-slate-500">Menunggu / diproses instansi</p>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-                  <p className="text-xs text-slate-500">Laporan Selesai</p>
-                  <p className="text-3xl font-bold font-mono tabular-nums text-emerald-700">
-                    {allVisibleReports.filter((r) => r.status === 'selesai').length}
-                  </p>
-                  <p className="text-xs text-slate-500">Tuntas diverifikasi lapangan</p>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('jumantik')}
-                  className="bg-white border border-slate-200 rounded-xl p-5 space-y-1 hover:border-slate-400 transition-colors cursor-pointer"
-                >
-                  <p className="text-xs text-slate-500">ABJ Bebas Jentik RW 013</p>
-                  <p
-                    className={`text-3xl font-bold font-mono tabular-nums ${
-                      cumulativeAbj === null
-                        ? 'text-slate-900'
-                        : cumulativeAbj >= 95
-                        ? 'text-emerald-700'
-                        : 'text-red-700'
-                    }`}
-                  >
-                    {cumulativeAbj === null ? '–' : `${cumulativeAbj}%`}
-                  </p>
-                  <p className="text-xs text-slate-500 underline underline-offset-2">
-                    Buka rekap Jumantik RT →
-                  </p>
+                {/* Pagination Dots (• ◦ ◦ ◦) matching Reference Screens 3 & 4 */}
+                <div className="flex items-center justify-center gap-2">
+                  {heroCarouselSlides.map((sl, idx) => (
+                    <button
+                      key={sl.id}
+                      type="button"
+                      onClick={() => setHeroSlide(idx)}
+                      aria-label={`Sorotan ${idx + 1}`}
+                      className={`h-2 rounded-full transition-all cursor-pointer ${
+                        heroSlide === idx ? 'w-5 bg-[#586826]' : 'w-2 bg-[#cbe0b0]'
+                      }`}
+                    />
+                  ))}
                 </div>
               </section>
 
-              {/* Live Geographic Map */}
-              <section className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-slate-700" />
-                      <span>Peta Geografis Laporan & Zona Kerawanan</span>
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                      Klik pin pada peta untuk melihat bukti foto, alamat hasil GPS, dan status penanganan.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => setFeedScope('all')}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                          feedScope === 'all'
-                            ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        Semua RW 013
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFeedScope('per_rt')}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                          feedScope === 'per_rt'
-                            ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        Per RT (10 RT)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFeedScope('mine')}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                          feedScope === 'mine'
-                            ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        Laporan Saya
-                      </button>
-                    </div>
-
-                    <select
-                      aria-label="Filter Kategori Beranda"
-                      value={feedCategory}
-                      onChange={(e) => setFeedCategory(e.target.value as 'ALL' | ReportCategory)}
-                      className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              {/* Reference Screen 5 Motif: 6 Circular Olive Category Filter Icons */}
+              <section aria-label="Filter Cepat 6 Kategori" className="space-y-2">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-xs font-bold text-[#263015]">Kategori Laporan</span>
+                  {feedCategory !== 'ALL' && (
+                    <button
+                      type="button"
+                      onClick={() => setFeedCategory('ALL')}
+                      className="text-[11px] font-semibold text-[#586826] underline cursor-pointer"
                     >
-                      <option value="ALL">Semua Kategori</option>
-                      {Object.values(CATEGORY_CATALOG).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.shortLabel}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      Tampilkan Semua
+                    </button>
+                  )}
                 </div>
 
-                {feedScope === 'per_rt' && (
-                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {RT_UNITS.map((unit) => {
-                        const count = allVisibleReports.filter((r) => r.rt === unit).length;
-                        const active = overviewSelectedRt === unit;
-                        return (
-                          <button
-                            key={unit}
-                            type="button"
-                            onClick={() => setOverviewSelectedRt(unit)}
-                            className={`px-2.5 py-1 text-xs font-mono rounded-md border transition-colors whitespace-nowrap cursor-pointer ${
-                              active
-                                ? 'bg-slate-900 border-slate-900 text-white font-semibold'
-                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            {unit} ({count})
-                          </button>
-                        );
-                      })}
-                    </div>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {CATEGORY_CIRCLE_ICONS.map((cat) => {
+                    const active = feedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() =>
+                          setFeedCategory((prev) => (prev === cat.id ? 'ALL' : cat.id))
+                        }
+                        className="flex flex-col items-center gap-1 py-1 cursor-pointer group"
+                      >
+                        <span
+                          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                            active
+                              ? 'bg-[#586826] text-[#a5cf4c] ring-2 ring-[#586826]/30'
+                              : 'bg-[#dcecc3] text-[#586826] group-hover:bg-[#cbe0b0]'
+                          }`}
+                        >
+                          {cat.icon}
+                        </span>
+                        <span
+                          className={`text-[10px] font-medium truncate max-w-full ${
+                            active ? 'text-[#263015] font-bold' : 'text-[#5b6649]'
+                          }`}
+                        >
+                          {cat.short}
+                        </span>
+                        <span
+                          className={`h-0.5 w-4 rounded-full ${
+                            active ? 'bg-[#586826]' : 'bg-transparent'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Per-RT Quick Strip when feedScope === 'per_rt' */}
+              {feedScope === 'per_rt' && (
+                <div className="bg-[#dcecc3] border border-[#cbe0b0] rounded-2xl p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#263015]">Pilih RT (10 Wilayah)</span>
                     <button
                       type="button"
                       onClick={() => setActiveTab('per_rt')}
-                      className="text-xs font-semibold text-slate-900 hover:underline whitespace-nowrap shrink-0 cursor-pointer"
+                      className="text-[11px] font-semibold text-[#586826] underline cursor-pointer"
                     >
-                      Buka Matriks Lengkap 10 RT →
+                      Katalog Lengkap →
                     </button>
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                    {RT_UNITS.map((unit) => {
+                      const count = allVisibleReports.filter((r) => r.rt === unit).length;
+                      const active = overviewSelectedRt === unit;
+                      return (
+                        <button
+                          key={unit}
+                          type="button"
+                          onClick={() => setOverviewSelectedRt(unit)}
+                          className={`min-h-[36px] px-3 py-1 text-xs font-mono rounded-full transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                            active
+                              ? 'bg-[#586826] text-[#f7f9f4] font-bold'
+                              : 'bg-[#f7f9f4] text-[#263015] border border-[#cbe0b0]'
+                          }`}
+                        >
+                          {unit} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-                <InteractiveMap
-                  center={
-                    overviewReports[0]
-                      ? { lat: overviewReports[0].latitude, lng: overviewReports[0].longitude }
-                      : DEFAULT_RW013_CENTER
-                  }
-                  zoom={15}
-                  heightClass="h-96"
-                  mode="explorer"
-                  reports={overviewReports}
-                  hotspots={hotspots}
-                  showHotspots={true}
-                  onSelectReport={(rep) => setActiveReportModal(rep)}
-                />
-              </section>
+              {/* Live Geographic Map Card */}
+              {showOverviewMap && (
+                <section className="bg-[#dcecc3] border border-[#cbe0b0] rounded-3xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 px-0.5">
+                    <div>
+                      <h2 className="text-xs font-bold text-[#263015]">
+                        Peta Geografis Kejadian &amp; Zona Rawan
+                      </h2>
+                      <p className="text-[11px] text-[#5b6649]">
+                        Ketuk pin untuk bukti foto &amp; status penanganan
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowOverviewMap(false)}
+                      className="text-[11px] font-semibold text-[#586826] hover:underline shrink-0 cursor-pointer"
+                    >
+                      Tutup Peta
+                    </button>
+                  </div>
 
-              {/* Real-Time Incident Feed */}
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-semibold text-slate-900">
-                    Daftar Laporan Terbaru ({overviewReports.length})
+                  <InteractiveMap
+                    center={
+                      overviewReports[0]
+                        ? {
+                            lat: overviewReports[0].latitude,
+                            lng: overviewReports[0].longitude,
+                          }
+                        : DEFAULT_RW013_CENTER
+                    }
+                    zoom={15}
+                    heightClass="h-52"
+                    mode="explorer"
+                    reports={overviewReports}
+                    hotspots={hotspots}
+                    showHotspots={true}
+                    onSelectReport={(rep) => setActiveReportModal(rep)}
+                  />
+                </section>
+              )}
+
+              {/* Reference Screens 4, 5 & 6 Motif: Horizontal Report Cards with Square Olive Thumbnails */}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between px-0.5">
+                  <h2 className="text-sm font-bold text-[#263015]">
+                    Daftar Laporan Warga ({overviewReports.length})
                   </h2>
                   {isAdmin && (
                     <button
                       type="button"
                       onClick={() => setActiveTab('admin')}
-                      className="text-xs font-semibold text-slate-900 hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-[#586826] hover:underline cursor-pointer"
                     >
-                      Kelola di Dashboard Admin →
+                      Triase Admin →
                     </button>
                   )}
                 </div>
 
                 {dataLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[1, 2, 3, 4].map((n) => (
+                  <div className="space-y-2.5">
+                    {[1, 2, 3].map((n) => (
                       <div
                         key={n}
-                        className="h-40 bg-white border border-slate-200 rounded-xl p-5 animate-pulse space-y-3"
+                        className="h-24 bg-white border border-[#cbe0b0] rounded-2xl p-3 animate-pulse flex items-center gap-3"
                       >
-                        <div className="h-3 w-1/3 bg-slate-200 rounded" />
-                        <div className="h-4 w-3/4 bg-slate-200 rounded" />
-                        <div className="h-3 w-full bg-slate-100 rounded" />
+                        <div className="w-16 h-16 rounded-xl bg-[#dcecc3] shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-1/2 bg-[#e6f2d3] rounded" />
+                          <div className="h-3.5 w-3/4 bg-[#dcecc3] rounded" />
+                          <div className="h-2.5 w-2/3 bg-[#e6f2d3] rounded" />
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : overviewReports.length === 0 ? (
-                  <div className="bg-white border border-slate-200 rounded-xl p-10 text-center space-y-3">
-                    <p className="text-sm font-semibold text-slate-900">
-                      Belum ada laporan warga pada tampilan ini
-                    </p>
-                    <p className="text-xs text-slate-500 max-w-md mx-auto">
-                      Kirimkan foto kejadian di sekitar Anda beserta titik lokasi GPS otomatis agar segera ditindaklanjuti oleh pengurus RW 013 dan instansi terkait.
-                    </p>
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('create_report')}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 cursor-pointer"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>Kirim Laporan Pertama</span>
-                      </button>
+                  <div className="bg-white border border-[#cbe0b0] rounded-3xl p-7 text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-[#586826] text-[#dcecc3] flex items-center justify-center mx-auto">
+                      <Camera className="w-6 h-6" />
                     </div>
+                    <p className="text-sm font-bold text-[#263015]">
+                      Belum ada laporan pada filter ini
+                    </p>
+                    <p className="text-xs text-[#5b6649] leading-relaxed">
+                      Kirimkan foto kejadian di sekitar Anda beserta lokasi GPS otomatis agar segera ditindaklanjuti pengurus RW 013.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReportPrefill(null);
+                        setActiveTab('create_report');
+                      }}
+                      className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Kirim Laporan Pertama</span>
+                    </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {overviewReports.map((rep) => {
+                  <div className="space-y-2.5">
+                    {overviewReports.map((rep, idx) => {
                       const catMeta = CATEGORY_CATALOG[rep.category];
+                      const sageTint = idx % 2 === 1;
                       return (
                         <article
                           key={rep.id}
                           onClick={() => setActiveReportModal(rep)}
-                          className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-400 transition-colors cursor-pointer flex flex-col"
+                          className={`rounded-2xl p-3 border border-[#cbe0b0] transition-all active:scale-[0.99] cursor-pointer flex items-center gap-3 ${
+                            sageTint
+                              ? 'bg-[#e6f2d3] hover:bg-[#dcecc3]'
+                              : 'bg-white hover:bg-[#e6f2d3]/60'
+                          }`}
                         >
-                          {rep.photoDataUrl ? (
-                            <img
-                              src={rep.photoDataUrl}
-                              alt={rep.title}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-44 object-cover border-b border-slate-100"
-                            />
-                          ) : null}
-                          <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                            <div className="space-y-1.5">
-                              {/* Zero-Pill Metadata Discipline: Clean unboxed text with separators */}
-                              <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                                <span className="font-medium text-slate-800">
-                                  {catMeta?.shortLabel || rep.category}
-                                </span>
-                                <span aria-hidden="true">·</span>
-                                <span className="font-mono">{rep.rt}</span>
-                                <span aria-hidden="true">·</span>
-                                <span
-                                  className={
-                                    rep.urgency === 'darurat'
-                                      ? 'text-red-700 font-semibold'
-                                      : rep.urgency === 'tinggi'
-                                      ? 'text-amber-700 font-semibold'
-                                      : 'text-slate-600'
-                                  }
-                                >
-                                  Urgensi {URGENCY_LABELS[rep.urgency]}
-                                </span>
-                              </div>
+                          {/* Square Deep Olive Thumbnail on Left (Reference Screen 4/5/6) */}
+                          <div className="w-16 h-16 rounded-2xl bg-[#586826] text-[#dcecc3] overflow-hidden shrink-0 flex items-center justify-center border border-[#48561e]">
+                            {rep.photoDataUrl ? (
+                              <img
+                                src={rep.photoDataUrl}
+                                alt={rep.title}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <ImageIcon className="w-6 h-6" />
+                            )}
+                          </div>
 
-                              <h3 className="text-base font-semibold text-slate-900 leading-snug">
-                                {rep.title}
-                              </h3>
-                              <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                                {rep.description}
-                              </p>
+                          {/* Stacked Clean Unboxed Metadata & Title */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#5b6649] truncate">
+                              <span className="font-semibold text-[#586826]">
+                                {catMeta?.shortLabel || rep.category}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span className="font-mono font-semibold text-[#263015]">
+                                {rep.rt}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span
+                                className={
+                                  rep.urgency === 'darurat'
+                                    ? 'text-red-700 font-bold'
+                                    : rep.urgency === 'tinggi'
+                                    ? 'text-amber-800 font-semibold'
+                                    : ''
+                                }
+                              >
+                                {URGENCY_LABELS[rep.urgency]}
+                              </span>
                             </div>
 
-                            <div className="pt-3 border-t border-slate-100 space-y-1.5 text-xs">
-                              <div className="flex items-center gap-1.5 text-slate-500 truncate">
-                                <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                            <h3 className="text-xs font-bold text-[#263015] truncate">
+                              {rep.title}
+                            </h3>
+
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-[#5b6649]">
+                              <span className="inline-flex items-center gap-1 truncate">
+                                <MapPin className="w-3 h-3 shrink-0 text-[#586826]" />
                                 <span className="truncate">{rep.address}</span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span
-                                  className={`inline-flex items-center gap-1 font-semibold ${
-                                    rep.status === 'selesai'
-                                      ? 'text-emerald-700'
-                                      : rep.status === 'menunggu'
-                                      ? 'text-amber-700'
-                                      : rep.status === 'ditolak'
-                                      ? 'text-slate-400'
-                                      : 'text-sky-700'
-                                  }`}
-                                >
-                                  {rep.status === 'selesai' && (
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                  )}
-                                  {STATUS_LABELS[rep.status]}
-                                </span>
-                                <span className="font-mono text-[11px] text-slate-400">
-                                  {formatTimestamp(rep.createdAt)}
-                                </span>
-                              </div>
+                              </span>
+
+                              <span className="inline-flex items-center gap-1 font-semibold text-[#263015] shrink-0">
+                                {rep.status === 'selesai' && (
+                                  <CheckCircle2 className="w-3 h-3 text-[#586826]" />
+                                )}
+                                {STATUS_LABELS[rep.status]}
+                              </span>
                             </div>
                           </div>
                         </article>
@@ -1291,23 +1319,209 @@ export default function App() {
 
           {activeTab === 'api_gateway' && <ApiIntegrationView dispatches={dispatches} />}
         </main>
+
+        {/* Pinned Mobile Bottom Navigation Bar (62px — Thumb-Zone Ergonomic Anchor) */}
+        <nav
+          aria-label="Navigasi Utama Bawah"
+          className="h-[62px] shrink-0 bg-[#f7f9f4]/95 border-t border-[#cbe0b0] backdrop-blur-md grid grid-cols-5 items-center px-1.5 z-20"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              activeTab === 'overview' ? 'text-[#586826] font-bold' : 'text-[#5b6649]'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">Beranda</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('per_rt')}
+            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              activeTab === 'per_rt' ? 'text-[#586826] font-bold' : 'text-[#5b6649]'
+            }`}
+          >
+            <Grid2x2 className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">10 RT</span>
+          </button>
+
+          {/* Center Primary Camera Report Trigger */}
+          <div className="flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setReportPrefill(null);
+                setActiveTab('create_report');
+              }}
+              aria-label="Kirim Laporan Kejadian"
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer ${
+                activeTab === 'create_report'
+                  ? 'bg-[#a5cf4c] text-[#263015] ring-2 ring-[#586826]'
+                  : 'bg-[#586826] text-[#f7f9f4] hover:bg-[#48561e]'
+              }`}
+            >
+              <Camera className="w-5 h-5" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('jumantik')}
+            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              activeTab === 'jumantik' ? 'text-[#586826] font-bold' : 'text-[#5b6649]'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">ABJ</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMenuSheetOpen(true)}
+            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              activeTab === 'analytics' || activeTab === 'admin' || activeTab === 'api_gateway'
+                ? 'text-[#586826] font-bold'
+                : 'text-[#5b6649]'
+            }`}
+          >
+            <LayoutGrid className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">Menu</span>
+          </button>
+        </nav>
+
+        {/* Bottom-Sheet Module & Citizen Profile Drawer */}
+        {menuSheetOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/45 backdrop-blur-xs p-0 sm:p-4">
+            <div className="w-full max-w-[420px] bg-[#f7f9f4] border border-[#cbe0b0] rounded-t-3xl sm:rounded-3xl max-h-[86vh] flex flex-col overflow-hidden shadow-xl">
+              <div className="w-10 h-1.5 bg-[#586826]/25 rounded-full mx-auto mt-3" />
+
+              <div className="px-5 py-3.5 border-b border-[#cbe0b0] flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#263015] truncate">
+                    {userProfile.displayName}
+                  </p>
+                  <p className="text-[11px] text-[#5b6649] inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-[#586826]" />
+                    <span>{isAdmin ? 'Petugas Admin RW 013' : 'Warga Terverifikasi'}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuSheetOpen(false)}
+                  aria-label="Tutup menu"
+                  className="min-h-[40px] min-w-[40px] rounded-full bg-[#e6f2d3] text-[#586826] flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Domisili RT Selector */}
+              <div className="px-5 py-3 bg-[#dcecc3] border-b border-[#cbe0b0] flex items-center justify-between gap-3 text-xs">
+                <label htmlFor="sheet-home-rt" className="font-semibold text-[#263015]">
+                  Domisili Wilayah Warga:
+                </label>
+                <select
+                  id="sheet-home-rt"
+                  value={userProfile.rt}
+                  onChange={(e) => handleChangeHomeRt(e.target.value as RtUnit)}
+                  className="min-h-[38px] px-3 py-1 text-xs font-mono font-bold bg-white border border-[#cbe0b0] rounded-full text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+                >
+                  {RT_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u} · RW 013
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* All Navigation Destinations */}
+              <div className="flex-1 overflow-y-auto phone-scroll p-3.5 space-y-2">
+                {drawerModules.map((mod) => {
+                  const active = activeTab === mod.id;
+                  return (
+                    <button
+                      key={mod.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(mod.id);
+                        setMenuSheetOpen(false);
+                      }}
+                      className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${
+                        active
+                          ? 'bg-[#586826] border-[#586826] text-[#f7f9f4]'
+                          : 'bg-white border-[#cbe0b0] text-[#263015] hover:bg-[#e6f2d3]'
+                      }`}
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          active
+                            ? 'bg-[#48561e] text-[#a5cf4c]'
+                            : 'bg-[#586826] text-[#dcecc3]'
+                        }`}
+                      >
+                        {mod.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold truncate">{mod.label}</span>
+                          {mod.badge && (
+                            <span
+                              className={`text-[10px] font-mono font-bold shrink-0 ${
+                                active ? 'text-[#a5cf4c]' : 'text-[#586826]'
+                              }`}
+                            >
+                              {mod.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className={`text-[11px] truncate ${
+                            active ? 'text-[#dcecc3]' : 'text-[#5b6649]'
+                          }`}
+                        >
+                          {mod.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="p-4 border-t border-[#cbe0b0] bg-[#f7f9f4]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuSheetOpen(false);
+                    signOut(auth);
+                  }}
+                  className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-red-800 bg-white border border-red-200 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Keluar dari Sesi Akun</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Push Notification Bottom Sheet */}
+        <NotificationDrawer
+          open={notifDrawerOpen}
+          onClose={() => setNotifDrawerOpen(false)}
+          notifications={notifications}
+          browserPermission={browserPushPerm}
+          onRequestBrowserPermission={handleRequestBrowserPush}
+        />
+
+        {/* Full Report Detail Bottom Sheet / Modal */}
+        <ReportDetailModal
+          report={syncedModalReport}
+          currentUserId={userProfile.uid}
+          onClose={() => setActiveReportModal(null)}
+        />
       </div>
-
-      {/* Slide-Over Push Notification Center */}
-      <NotificationDrawer
-        open={notifDrawerOpen}
-        onClose={() => setNotifDrawerOpen(false)}
-        notifications={notifications}
-        browserPermission={browserPushPerm}
-        onRequestBrowserPermission={handleRequestBrowserPush}
-      />
-
-      {/* Full Report Detail Modal */}
-      <ReportDetailModal
-        report={syncedModalReport}
-        currentUserId={userProfile.uid}
-        onClose={() => setActiveReportModal(null)}
-      />
     </div>
   );
 }

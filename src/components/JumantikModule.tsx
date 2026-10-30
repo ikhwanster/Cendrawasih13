@@ -6,7 +6,9 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Crosshair,
+  Droplets,
   FileText,
+  Home,
   Loader2,
   Trash2,
 } from 'lucide-react';
@@ -40,6 +42,7 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
 }) => {
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  const [subView, setSubView] = useState<'form' | 'recap' | 'history'>('form');
   const [inspectionDate, setInspectionDate] = useState(todayStr);
   const [rt, setRt] = useState<RtUnit>(userProfile.rt || 'RT 001');
   const [officerName, setOfficerName] = useState(userProfile.displayName || '');
@@ -117,7 +120,7 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
 
   // Per RT Recap
   const perRtStats = useMemo(() => {
-    return RT_UNITS.map((unit) => {
+    return RT_UNITS.map((unit, idx) => {
       const unitLogs = logs.filter((l) => l.rt === unit);
       const inspected = unitLogs.reduce((s, l) => s + l.housesInspected, 0);
       const positive = unitLogs.reduce((s, l) => s + l.housesWithLarvae, 0);
@@ -125,6 +128,7 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
         inspected > 0 ? Number((((inspected - positive) / inspected) * 100).toFixed(1)) : null;
       return {
         rt: unit,
+        shortNum: String(idx + 1).padStart(2, '0'),
         sessions: unitLogs.length,
         inspected,
         positive,
@@ -216,7 +220,7 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
       setHousesWithLarvae(0);
       setLarvaeLocations('');
       setNotes('');
-      setSuccessMsg(`Data pemeriksaan jentik ${rt} (${inspectionDate}) berhasil disimpan.`);
+      setSuccessMsg(`Rekap pemeriksaan jentik ${rt} (${inspectionDate}) tersimpan.`);
     } catch (error) {
       setSubmitting(false);
       handleFirestoreError(error, OperationType.CREATE, path);
@@ -233,114 +237,174 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header & Reference Link */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Kampung Bebas Jentik – RW 013
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Catat hasil pemeriksaan jentik tiap RT. Data tersimpan bersama secara real-time dan rekap Angka Bebas Jentik (ABJ) terhitung otomatis.
-          </p>
+    <div className="space-y-5">
+      {/* Reference Screen 7 Motif: Centered Circular Olive ABJ Emblem + Two Horizontal Stat Cards */}
+      <section className="bg-[#dcecc3] border border-[#cbe0b0] rounded-3xl p-5 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-base font-bold text-[#263015]">
+              Kampung Bebas Jentik RW 013
+            </h1>
+            <p className="text-xs text-[#5b6649]">Target Kemenkes RI ≥ 95,0%</p>
+          </div>
+          <a
+            href="/assets/aistudio/ABJ_RW_013___Kampung_Bebas_Jentik_374cf83d.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-h-[38px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#586826] bg-[#f7f9f4] border border-[#cbe0b0] rounded-full hover:bg-white whitespace-nowrap shrink-0"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Pedoman</span>
+          </a>
         </div>
-        <a
-          href="/assets/aistudio/ABJ_RW_013___Kampung_Bebas_Jentik_374cf83d.md"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 underline underline-offset-4 whitespace-nowrap shrink-0"
-        >
-          <FileText className="w-3.5 h-3.5" />
-          <span>Dokumen Acuan ABJ RW 013</span>
-        </a>
-      </div>
 
-      {/* Cumulative ABJ RW 013 Strip */}
-      <section aria-label="ABJ RW 013 Kumulatif" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1.5">
-          <p className="text-xs font-medium text-slate-500">ABJ RW 013 (Kumulatif)</p>
-          <div className="flex items-baseline gap-2.5">
-            <span className="text-3xl font-bold font-mono tabular-nums text-slate-900">
+        {/* Centered Large Circular Olive Badge (Reference Screen 7) */}
+        <div className="flex flex-col items-center py-2 space-y-2.5">
+          <div className="w-32 h-32 rounded-full bg-[#586826] text-[#dcecc3] flex flex-col items-center justify-center shadow-sm border-4 border-[#e6f2d3]">
+            <Droplets className="w-6 h-6 text-[#a5cf4c] mb-0.5" />
+            <span className="text-2xl font-bold font-mono tabular-nums text-[#f7f9f4]">
               {summary.abj === null ? '–' : `${summary.abj}%`}
             </span>
-            {summary.abj !== null && (
-              <span
-                className={`inline-flex items-center gap-1 text-xs font-semibold ${
-                  summary.abj >= 95 ? 'text-emerald-700' : 'text-red-700'
-                }`}
-              >
-                {summary.abj >= 95 ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Memenuhi Target
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Waspada (&lt;95%)
-                  </>
-                )}
-              </span>
-            )}
+            <span className="text-[10px] font-medium text-[#dcecc3]">ABJ Kumulatif</span>
           </div>
-          <p className="text-xs text-slate-500">Standar baku Kemenkes RI ≥ 95,0%</p>
+
+          {summary.abj !== null && (
+            <p className="text-xs font-semibold text-[#263015] inline-flex items-center gap-1.5">
+              {summary.abj >= 95 ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-[#586826]" />
+                  <span>Memenuhi Standar Bebas Jentik</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4 text-red-700" />
+                  <span className="text-red-800">Waspada Jentik (&lt;95%)</span>
+                </>
+              )}
+            </p>
+          )}
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1.5">
-          <p className="text-xs font-medium text-slate-500">Total Rumah Diperiksa</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-slate-900">
-            {summary.totalInspected}
-          </p>
-          <p className="text-xs text-slate-500 font-mono">
-            {logs.length} kunjungan kader jumantik
-          </p>
+        {/* Two Horizontal Square-Thumbnail Cards like Reference Screen 7 */}
+        <div className="space-y-2.5">
+          <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-[#586826] text-[#dcecc3] flex items-center justify-center shrink-0">
+              <Home className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-[#263015]">Total Rumah Diperiksa</p>
+              <p className="text-[11px] text-[#5b6649]">
+                {logs.length} kunjungan kader · {summary.freeHouses} rumah bebas jentik
+              </p>
+            </div>
+            <span className="text-lg font-bold font-mono tabular-nums text-[#263015] shrink-0">
+              {summary.totalInspected}
+            </span>
+          </div>
+
+          <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-[#586826] text-[#a5cf4c] flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-[#263015]">Rumah Positif Jentik</p>
+              <p className="text-[11px] text-[#5b6649]">
+                Terhubung otomatis ke peta rawan DBD
+              </p>
+            </div>
+            <span
+              className={`text-lg font-bold font-mono tabular-nums shrink-0 ${
+                summary.totalPositive > 0 ? 'text-red-700' : 'text-[#586826]'
+              }`}
+            >
+              {summary.totalPositive}
+            </span>
+          </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1.5">
-          <p className="text-xs font-medium text-slate-500">Rumah Bebas Jentik</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-emerald-700">
-            {summary.freeHouses}
+        {/* Circular RT Quick Selector Row (Reference Screen 7 Bottom Circles) */}
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[11px] font-semibold text-[#263015]">
+            Pilih Cepat RT Pemeriksaan (10 RT)
           </p>
-          <p className="text-xs text-slate-500">Lingkungan bersih penampungan air</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1.5">
-          <p className="text-xs font-medium text-slate-500">Rumah Positif Jentik</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-red-700">
-            {summary.totalPositive}
-          </p>
-          <p className="text-xs text-slate-500">Terhubung ke pemetaan area rawan DBD</p>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+            {perRtStats.map((item) => {
+              const active = rt === item.rt;
+              return (
+                <button
+                  key={item.rt}
+                  type="button"
+                  onClick={() => {
+                    setRt(item.rt);
+                    setRtFilter(item.rt);
+                  }}
+                  className={`w-11 h-11 rounded-full font-mono text-xs font-bold shrink-0 flex items-center justify-center transition-all cursor-pointer ${
+                    active
+                      ? 'bg-[#586826] text-[#a5cf4c] ring-2 ring-[#263015]/25'
+                      : 'bg-[#f7f9f4] border border-[#cbe0b0] text-[#586826] hover:bg-white'
+                  }`}
+                  title={`${item.rt} — ABJ: ${item.abj === null ? 'Belum cek' : `${item.abj}%`}`}
+                >
+                  {item.shortNum}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Main Split: Form Pemeriksaan Jentik + Rekap Per RT & Per Minggu */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Form Pemeriksaan Jentik */}
+      {/* Segmented Mode Switcher */}
+      <div className="grid grid-cols-3 gap-1 p-1 bg-[#e6f2d3] border border-[#cbe0b0] rounded-full">
+        {(
+          [
+            { id: 'form', label: 'Input Jentik' },
+            { id: 'recap', label: 'Rekap RT/Mgg' },
+            { id: 'history', label: `Riwayat (${logs.length})` },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setSubView(tab.id)}
+            className={`min-h-[40px] px-3 py-1.5 text-xs font-semibold rounded-full transition-colors whitespace-nowrap cursor-pointer ${
+              subView === tab.id
+                ? 'bg-[#586826] text-[#f7f9f4]'
+                : 'text-[#5b6649] hover:text-[#263015]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Subview 1: Form Pemeriksaan Jentik */}
+      {subView === 'form' && (
         <form
           onSubmit={handleSubmit}
-          className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6 space-y-4"
+          className="bg-white border border-[#cbe0b0] rounded-3xl p-5 space-y-4"
         >
-          <div className="border-b border-slate-200 pb-3">
-            <h2 className="text-base font-semibold text-slate-900">Form Pemeriksaan Jentik</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Input hasil pemantauan berkala kader jumantik tiap RT di RW 013.
+          <div className="border-b border-[#e6f2d3] pb-3">
+            <h2 className="text-sm font-bold text-[#263015]">Form Pemeriksaan Jentik</h2>
+            <p className="text-xs text-[#5b6649] mt-0.5">
+              Input hasil pemantauan berkala kader Jumantik untuk {rt}
             </p>
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800">
+            <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-800">
               {errorMsg}
             </div>
           )}
           {successMsg && (
-            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-              {successMsg}
+            <div className="p-3 rounded-2xl bg-[#dcecc3] border border-[#586826]/30 text-xs text-[#263015] font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#586826] shrink-0" />
+              <span>{successMsg}</span>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label htmlFor="abj-date" className="block text-xs font-semibold text-slate-700">
+              <label htmlFor="abj-date" className="block text-xs font-semibold text-[#263015]">
                 Tanggal
               </label>
               <input
@@ -349,19 +413,19 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
                 required
                 value={inspectionDate}
                 onChange={(e) => setInspectionDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-mono bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[44px] px-3 py-2 text-xs font-mono bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="abj-rt" className="block text-xs font-semibold text-slate-700">
-                RT
+              <label htmlFor="abj-rt" className="block text-xs font-semibold text-[#263015]">
+                Wilayah RT
               </label>
               <select
                 id="abj-rt"
                 value={rt}
                 onChange={(e) => setRt(e.target.value as RtUnit)}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[44px] px-3 py-2 text-xs font-mono font-medium bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               >
                 {RT_UNITS.map((u) => (
                   <option key={u} value={u}>
@@ -373,8 +437,8 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="abj-officer" className="block text-xs font-semibold text-slate-700">
-              Nama Petugas / Jumantik
+            <label htmlFor="abj-officer" className="block text-xs font-semibold text-[#263015]">
+              Nama Petugas / Kader Jumantik
             </label>
             <input
               id="abj-officer"
@@ -385,13 +449,13 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
               value={officerName}
               onChange={(e) => setOfficerName(e.target.value)}
               placeholder="Nama kader jumantik bertugas"
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="w-full min-h-[44px] px-3.5 py-2 text-sm bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label htmlFor="abj-inspected" className="block text-xs font-semibold text-slate-700">
+              <label htmlFor="abj-inspected" className="block text-xs font-semibold text-[#263015]">
                 Rumah Diperiksa
               </label>
               <input
@@ -402,13 +466,13 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
                 required
                 value={housesInspected}
                 onChange={(e) => setHousesInspected(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm font-mono bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[44px] px-3 py-2 text-sm font-mono bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="abj-positive" className="block text-xs font-semibold text-slate-700">
-                Rumah Ada Jentik
+              <label htmlFor="abj-positive" className="block text-xs font-semibold text-[#263015]">
+                Positif Jentik
               </label>
               <input
                 id="abj-positive"
@@ -418,13 +482,13 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
                 required
                 value={housesWithLarvae}
                 onChange={(e) => setHousesWithLarvae(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm font-mono bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[44px] px-3 py-2 text-sm font-mono bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="abj-loc" className="block text-xs font-semibold text-slate-700">
+            <label htmlFor="abj-loc" className="block text-xs font-semibold text-[#263015]">
               Lokasi Jentik Ditemukan (Jika Ada)
             </label>
             <input
@@ -433,14 +497,14 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
               maxLength={VALIDATION_LIMITS.JUMANTIK_FIELD_MAX}
               value={larvaeLocations}
               onChange={(e) => setLarvaeLocations(e.target.value)}
-              placeholder="Contoh: Bak mandi, tatakan pot bunga, ban bekas..."
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="Bak mandi, tatakan pot bunga, ban bekas..."
+              className="w-full min-h-[44px] px-3.5 py-2 text-xs bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="abj-action" className="block text-xs font-semibold text-slate-700">
-              Tindakan yang Dilakukan
+            <label htmlFor="abj-action" className="block text-xs font-semibold text-[#263015]">
+              Tindakan Lapangan
             </label>
             <input
               id="abj-action"
@@ -448,13 +512,13 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
               maxLength={VALIDATION_LIMITS.JUMANTIK_FIELD_MAX}
               value={actionTaken}
               onChange={(e) => setActionTaken(e.target.value)}
-              placeholder="Contoh: Pengurasan langsung, pemberian bubuk abate, edukasi warga"
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="Pengurasan langsung, abate, edukasi warga"
+              className="w-full min-h-[44px] px-3.5 py-2 text-xs bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="abj-notes" className="block text-xs font-semibold text-slate-700">
+            <label htmlFor="abj-notes" className="block text-xs font-semibold text-[#263015]">
               Catatan Tambahan
             </label>
             <textarea
@@ -464,16 +528,16 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Catatan kondisi lingkungan RT..."
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="w-full px-3.5 py-2 text-xs bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+          <div className="flex items-center justify-between text-xs text-[#5b6649] pt-1">
             <span className="truncate">{gpsStatus}</span>
             <button
               type="button"
               onClick={refreshGps}
-              className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900 font-medium whitespace-nowrap shrink-0 cursor-pointer"
+              className="min-h-[36px] inline-flex items-center gap-1 text-[#586826] font-semibold whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Crosshair className="w-3.5 h-3.5" />
               <span>Perbarui GPS</span>
@@ -483,7 +547,7 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
           <button
             type="submit"
             disabled={submitting}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+            className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
           >
             {submitting ? (
               <>
@@ -498,53 +562,52 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
             )}
           </button>
         </form>
+      )}
 
-        {/* Rekap Per RT & Per Minggu */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Per RT */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+      {/* Subview 2: Rekap Per RT & Per Minggu */}
+      {subView === 'recap' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-[#cbe0b0] rounded-3xl overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-[#cbe0b0] bg-[#e6f2d3]/60 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Rekap Per RT</h2>
-                <p className="text-xs text-slate-500">
-                  Perbandingan Angka Bebas Jentik (ABJ) antar-RT di lingkungan RW 013
-                </p>
+                <h2 className="text-xs font-bold text-[#263015]">Rekap ABJ 10 Wilayah RT</h2>
+                <p className="text-[11px] text-[#5b6649]">Perbandingan capaian bebas jentik</p>
               </div>
-              <span className="text-xs font-mono text-slate-500">Target ≥ 95%</span>
+              <span className="text-[11px] font-mono text-[#586826]">≥ 95%</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto phone-scroll">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                    <th className="py-2.5 px-4 font-semibold">Wilayah</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Diperiksa</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Ada Jentik</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">ABJ (%)</th>
-                    <th className="py-2.5 px-4 font-semibold">Status Kerawanan</th>
+                  <tr className="border-b border-[#cbe0b0] bg-[#f7f9f4] text-[#5b6649]">
+                    <th className="py-2.5 px-3 font-semibold">RT</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Cek</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Jentik</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">ABJ</th>
+                    <th className="py-2.5 px-3 font-semibold">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#e6f2d3]">
                   {perRtStats.map((row) => (
-                    <tr key={row.rt} className="hover:bg-slate-50/80">
-                      <td className="py-2.5 px-4 font-medium text-slate-900 font-mono">
+                    <tr key={row.rt} className="hover:bg-[#f7f9f4]">
+                      <td className="py-2.5 px-3 font-bold text-[#263015] font-mono whitespace-nowrap">
                         {row.rt}
                       </td>
-                      <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[#5b6649]">
                         {row.inspected}
                       </td>
-                      <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[#5b6649]">
                         {row.positive}
                       </td>
-                      <td className="py-2.5 px-4 text-right font-mono tabular-nums font-semibold text-slate-900">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-[#263015]">
                         {row.abj === null ? '–' : `${row.abj}%`}
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         {row.abj === null ? (
-                          <span className="text-slate-400">Belum diperiksa</span>
+                          <span className="text-[#5b6649]">Belum cek</span>
                         ) : row.abj >= 95 ? (
-                          <span className="text-emerald-700 font-medium">Bebas Jentik</span>
+                          <span className="text-[#586826] font-semibold">Bebas Jentik</span>
                         ) : (
-                          <span className="text-red-700 font-semibold">Rawan DBD (&lt;95%)</span>
+                          <span className="text-red-700 font-semibold">Rawan (&lt;95%)</span>
                         )}
                       </td>
                     </tr>
@@ -554,48 +617,45 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
             </div>
           </div>
 
-          {/* Per Minggu */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200">
-              <h2 className="text-base font-semibold text-slate-900">Rekap Per Minggu</h2>
-              <p className="text-xs text-slate-500">
-                Perkembangan mingguan surveilans jentik nyamuk RW 013
-              </p>
+          <div className="bg-white border border-[#cbe0b0] rounded-3xl overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-[#cbe0b0] bg-[#e6f2d3]/60">
+              <h2 className="text-xs font-bold text-[#263015]">Rekap Mingguan RW 013</h2>
+              <p className="text-[11px] text-[#5b6649]">Tren pemantauan jentik per minggu</p>
             </div>
             {perWeekStats.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-500">
-                Belum ada riwayat pemeriksaan mingguan. Silakan catat pemeriksaan pertama pada formulir di samping.
+              <div className="p-6 text-center text-xs text-[#5b6649]">
+                Belum ada rekap mingguan tercatat.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto phone-scroll">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                      <th className="py-2.5 px-4 font-semibold">Minggu</th>
-                      <th className="py-2.5 px-4 font-semibold text-right">Kunjungan RT</th>
-                      <th className="py-2.5 px-4 font-semibold text-right">Rumah Diperiksa</th>
-                      <th className="py-2.5 px-4 font-semibold text-right">Positif Jentik</th>
-                      <th className="py-2.5 px-4 font-semibold text-right">Capaian ABJ</th>
+                    <tr className="border-b border-[#cbe0b0] bg-[#f7f9f4] text-[#5b6649]">
+                      <th className="py-2.5 px-3 font-semibold">Minggu</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Sesi</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Cek</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Jentik</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">ABJ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#e6f2d3]">
                     {perWeekStats.map((w) => (
-                      <tr key={w.weekKey} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 px-4 font-mono font-medium text-slate-900">
+                      <tr key={w.weekKey} className="hover:bg-[#f7f9f4]">
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#263015]">
                           {w.weekKey}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                        <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[#5b6649]">
                           {w.sessions}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                        <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[#5b6649]">
                           {w.inspected}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                        <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[#5b6649]">
                           {w.positive}
                         </td>
                         <td
-                          className={`py-2.5 px-4 text-right font-mono tabular-nums font-semibold ${
-                            w.abj >= 95 ? 'text-emerald-700' : 'text-red-700'
+                          className={`py-2.5 px-3 text-right font-mono tabular-nums font-bold ${
+                            w.abj >= 95 ? 'text-[#586826]' : 'text-red-700'
                           }`}
                         >
                           {w.abj}%
@@ -608,140 +668,124 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
             )}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Riwayat Input */}
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Riwayat Input Pemeriksaan</h2>
-            <p className="text-xs text-slate-500">
-              Daftar lengkap pencatatan jumantik beserta tindakan lapangan
-            </p>
+      {/* Subview 3: Riwayat Input & Eskalasi Puskesmas */}
+      {subView === 'history' && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-[#263015]">
+              Riwayat Input Kader Jumantik
+            </span>
+            <select
+              aria-label="Filter RT Riwayat"
+              value={rtFilter}
+              onChange={(e) => setRtFilter(e.target.value)}
+              className="min-h-[38px] px-3 py-1.5 text-xs font-mono bg-white border border-[#cbe0b0] rounded-full text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+            >
+              <option value="ALL">Semua RT</option>
+              {RT_UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
           </div>
-          <select
-            aria-label="Filter RT Riwayat"
-            value={rtFilter}
-            onChange={(e) => setRtFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-          >
-            <option value="ALL">Semua Wilayah RT</option>
-            {RT_UNITS.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        {filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
-            Belum ada riwayat input pemeriksaan jentik untuk filter ini.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                  <th className="py-3 px-4 font-semibold">Tanggal</th>
-                  <th className="py-3 px-4 font-semibold">RT</th>
-                  <th className="py-3 px-4 font-semibold">Petugas / Jumantik</th>
-                  <th className="py-3 px-4 font-semibold text-right">Diperiksa</th>
-                  <th className="py-3 px-4 font-semibold text-right">Ada Jentik</th>
-                  <th className="py-3 px-4 font-semibold">Lokasi Jentik & Tindakan</th>
-                  <th className="py-3 px-4 font-semibold text-right">Tindak Lanjut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredLogs.map((item) => {
-                  const abjRow = Number(
-                    (
-                      ((item.housesInspected - item.housesWithLarvae) / item.housesInspected) *
-                      100
-                    ).toFixed(1)
-                  );
-                  return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 align-top">
-                      <td className="py-3 px-4 font-mono whitespace-nowrap text-slate-800">
-                        {item.inspectionDate}
-                      </td>
-                      <td className="py-3 px-4 font-mono whitespace-nowrap font-medium text-slate-900">
-                        {item.rt}
-                      </td>
-                      <td className="py-3 px-4 text-slate-800">{item.officerName}</td>
-                      <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-700">
-                        {item.housesInspected}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono tabular-nums">
-                        <span
-                          className={
-                            item.housesWithLarvae > 0
-                              ? 'text-red-700 font-semibold'
-                              : 'text-emerald-700 font-medium'
-                          }
+          {filteredLogs.length === 0 ? (
+            <div className="bg-white border border-[#cbe0b0] rounded-3xl p-7 text-center text-xs text-[#5b6649]">
+              Belum ada riwayat pemeriksaan jentik untuk filter ini.
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {filteredLogs.map((item) => {
+                const abjRow = Number(
+                  (
+                    ((item.housesInspected - item.housesWithLarvae) / item.housesInspected) *
+                    100
+                  ).toFixed(1)
+                );
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-[#cbe0b0] rounded-2xl p-3.5 space-y-2 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-[#263015]">
+                          {item.rt} · {item.officerName}
+                        </p>
+                        <p className="text-[11px] font-mono text-[#5b6649]">
+                          {item.inspectionDate} · {item.housesInspected} rumah cek ·{' '}
+                          <span
+                            className={
+                              item.housesWithLarvae > 0
+                                ? 'text-red-700 font-semibold'
+                                : 'text-[#586826] font-semibold'
+                            }
+                          >
+                            {item.housesWithLarvae} jentik ({abjRow}%)
+                          </span>
+                        </p>
+                      </div>
+
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLog(item.id)}
+                          title="Hapus log"
+                          className="p-1.5 text-[#5b6649] hover:text-red-700 cursor-pointer"
                         >
-                          {item.housesWithLarvae} ({abjRow}%)
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 max-w-xs space-y-0.5">
-                        {item.larvaeLocations ? (
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {(item.larvaeLocations || item.actionTaken || item.notes) && (
+                      <div className="text-[11px] text-[#5b6649] bg-[#f7f9f4] rounded-xl p-2.5 space-y-0.5">
+                        {item.larvaeLocations && (
                           <p>
-                            <span className="font-medium text-slate-800">Titik:</span>{' '}
+                            <strong className="text-[#263015]">Titik:</strong>{' '}
                             {item.larvaeLocations}
                           </p>
-                        ) : (
-                          <p className="text-slate-400">Tidak ditemukan jentik</p>
                         )}
                         {item.actionTaken && (
                           <p>
-                            <span className="font-medium text-slate-800">Tindakan:</span>{' '}
+                            <strong className="text-[#263015]">Tindakan:</strong>{' '}
                             {item.actionTaken}
                           </p>
                         )}
-                        {item.notes && <p className="text-slate-500">{item.notes}</p>}
-                      </td>
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
-                          {item.housesWithLarvae > 0 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onEscalateToReport({
-                                  title: `Temuan ${item.housesWithLarvae} Rumah Positif Jentik di ${item.rt}`,
-                                  description: `Hasil pemeriksaan Jumantik (${item.officerName}) pada ${item.inspectionDate}: dari ${item.housesInspected} rumah diperiksa, ditemukan ${item.housesWithLarvae} rumah positif jentik (ABJ ${abjRow}%). Lokasi jentik: ${item.larvaeLocations || 'Penampungan air'}. Tindakan awal: ${item.actionTaken || '-'}. Mohon tindak lanjut Puskesmas.`,
-                                  category: 'kesehatan_jentik',
-                                  urgency: abjRow < 90 ? 'darurat' : 'tinggi',
-                                  rt: item.rt,
-                                  latitude: item.latitude,
-                                  longitude: item.longitude,
-                                })
-                              }
-                              className="inline-flex items-center gap-1 text-xs font-medium text-red-700 hover:text-red-900 underline underline-offset-2 cursor-pointer"
-                            >
-                              <span>Eskalasi Puskesmas</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLog(item.id)}
-                              title="Hapus log"
-                              className="p-1 text-slate-400 hover:text-red-700 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                        {item.notes && <p>{item.notes}</p>}
+                      </div>
+                    )}
+
+                    {item.housesWithLarvae > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onEscalateToReport({
+                            title: `Temuan ${item.housesWithLarvae} Rumah Positif Jentik di ${item.rt}`,
+                            description: `Hasil pemeriksaan Jumantik (${item.officerName}) pada ${item.inspectionDate}: dari ${item.housesInspected} rumah diperiksa, ditemukan ${item.housesWithLarvae} rumah positif jentik (ABJ ${abjRow}%). Lokasi jentik: ${item.larvaeLocations || 'Penampungan air'}. Tindakan awal: ${item.actionTaken || '-'}. Mohon tindak lanjut Puskesmas.`,
+                            category: 'kesehatan_jentik',
+                            urgency: abjRow < 90 ? 'darurat' : 'tinggi',
+                            rt: item.rt,
+                            latitude: item.latitude,
+                            longitude: item.longitude,
+                          })
+                        }
+                        className="w-full min-h-[38px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] cursor-pointer"
+                      >
+                        <span>Eskalasi Laporan ke Puskesmas</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };

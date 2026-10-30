@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
+  Building2,
   Camera,
   CheckCircle2,
   Crosshair,
@@ -8,6 +9,8 @@ import {
   Loader2,
   MapPin,
   Send,
+  ShieldCheck,
+  ThumbsUp,
   Trash2,
   Video,
   X,
@@ -40,6 +43,18 @@ export interface PrefillReportDraft {
   rt?: RtUnit;
   latitude?: number;
   longitude?: number;
+}
+
+interface SubmittedSummary {
+  id: string;
+  title: string;
+  rt: RtUnit;
+  categoryLabel: string;
+  agencyLabel: string;
+  slaHours: number;
+  address: string;
+  coordsLabel: string;
+  hasPhoto: boolean;
 }
 
 interface CreateReportPanelProps {
@@ -81,6 +96,7 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [submittedSummary, setSubmittedSummary] = useState<SubmittedSummary | null>(null);
 
   const stopCameraStream = useCallback(() => {
     if (streamRef.current) {
@@ -124,7 +140,7 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
       (err) => {
         setLocating(false);
         setLocationNotice(
-          `GPS otomatis tidak diizinkan (${err.message}). Anda tetap dapat mengklik peta untuk menentukan titik presisi.`
+          `GPS otomatis tidak diizinkan (${err.message}). Ketuk peta di bawah untuk mengunci titik presisi.`
         );
         updateAddressFromCoords(coords.lat, coords.lng);
       },
@@ -170,7 +186,7 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
       }, 60);
     } catch {
       setCameraError(
-        'Kamera langsung tidak dapat diakses. Gunakan tombol Unggah / Kamera Perangkat di sebelahnya.'
+        'Kamera langsung tidak dapat diakses. Gunakan tombol Unggah Foto di sebelahnya.'
       );
     }
   };
@@ -242,6 +258,7 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
     setSubmitting(true);
     const reportId = generateSafeId('rep');
     const path = `reports/${reportId}`;
+    const catMeta = CATEGORY_CATALOG[category];
 
     try {
       await setDoc(doc(db, 'reports', reportId), {
@@ -265,154 +282,274 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
         updatedAt: serverTimestamp(),
       });
       setSubmitting(false);
-      onSuccess();
+      setSubmittedSummary({
+        id: reportId,
+        title: cleanTitle,
+        rt,
+        categoryLabel: catMeta.shortLabel,
+        agencyLabel: AGENCY_LABELS[catMeta.defaultAgency],
+        slaHours: catMeta.slaHours,
+        address: cleanAddr,
+        coordsLabel: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+        hasPhoto: Boolean(photoDataUrl),
+      });
     } catch (error) {
       setSubmitting(false);
       handleFirestoreError(error, OperationType.CREATE, path);
     }
   };
 
+  const resetForAnotherReport = () => {
+    setSubmittedSummary(null);
+    setTitle('');
+    setDescription('');
+    setPhotoDataUrl('');
+    setFormError('');
+  };
+
   const activeCategoryMeta = CATEGORY_CATALOG[category];
 
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Kirim Laporan Kejadian Warga</h2>
-          <p className="text-sm text-slate-600 mt-1">
-            Lampirkan bukti foto real-time dan pastikan titik koordinat GPS sesuai lokasi kejadian di lingkungan RW 013.
+  // Reference Screen 12: Crisp Off-White Confirmation Screen with Circular Olive ThumbsUp Badge & 3 Square Milestones
+  if (submittedSummary) {
+    return (
+      <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-3xl p-6 text-center space-y-6">
+        <div className="pt-3 flex flex-col items-center space-y-4">
+          <div className="w-24 h-24 rounded-full border-[3px] border-[#586826] bg-[#e6f2d3]/60 flex items-center justify-center text-[#586826]">
+            <ThumbsUp className="w-10 h-10 stroke-[2.2]" />
+          </div>
+
+          <div className="space-y-1.5 max-w-sm">
+            <h2 className="text-xl font-bold text-[#263015] [text-wrap:balance]">
+              Laporan Berhasil Terkirim
+            </h2>
+            <p className="text-xs text-[#5b6649] leading-relaxed">
+              {submittedSummary.categoryLabel} · {submittedSummary.rt} · RW 013
+            </p>
+          </div>
+        </div>
+
+        {/* Clean Olive & Matcha Progress Summary Strip */}
+        <div className="bg-[#e6f2d3] border border-[#cbe0b0] rounded-2xl p-4 text-left space-y-2 text-xs">
+          <p className="font-semibold text-[#263015] leading-snug">{submittedSummary.title}</p>
+          <p className="text-[#5b6649] truncate">{submittedSummary.address}</p>
+          <div className="pt-2 border-t border-[#cbe0b0] flex items-center justify-between gap-2 text-[11px] text-[#5b6649]">
+            <span className="font-mono">{submittedSummary.coordsLabel}</span>
+            <span>SLA {submittedSummary.slaHours} jam</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-[#cbe0b0] overflow-hidden">
+            <div className="w-1/3 h-full rounded-full bg-[#a5cf4c]" />
+          </div>
+          <p className="text-[11px] text-[#586826] font-medium">
+            Rujukan otomatis: {submittedSummary.agencyLabel}
           </p>
         </div>
+
+        {/* 3 Square Olive Milestone Blocks (Reference Screen 12 Bottom Motif) */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="bg-white border border-[#cbe0b0] rounded-2xl p-2.5 flex flex-col items-center space-y-1.5">
+            <div className="w-10 h-10 rounded-xl bg-[#586826] text-[#dcecc3] flex items-center justify-center">
+              <Camera className="w-4 h-4" />
+            </div>
+            <span className="text-[11px] font-semibold text-[#263015]">01. Terkirim</span>
+            <span className="text-[10px] text-[#5b6649]">
+              {submittedSummary.hasPhoto ? 'Foto + GPS' : 'Titik GPS'}
+            </span>
+          </div>
+
+          <div className="bg-white border border-[#cbe0b0] rounded-2xl p-2.5 flex flex-col items-center space-y-1.5">
+            <div className="w-10 h-10 rounded-xl bg-[#586826]/85 text-[#dcecc3] flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <span className="text-[11px] font-semibold text-[#263015]">02. Triase</span>
+            <span className="text-[10px] text-[#5b6649]">Verifikasi RW</span>
+          </div>
+
+          <div className="bg-white border border-[#cbe0b0] rounded-2xl p-2.5 flex flex-col items-center space-y-1.5">
+            <div className="w-10 h-10 rounded-xl bg-[#586826]/70 text-[#dcecc3] flex items-center justify-center">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <span className="text-[11px] font-semibold text-[#263015]">03. Instansi</span>
+            <span className="text-[10px] text-[#5b6649]">Push Status</span>
+          </div>
+        </div>
+
+        <div className="space-y-2.5 pt-1">
+          <button
+            type="button"
+            onClick={onSuccess}
+            className="w-full min-h-[48px] px-5 py-3 text-sm font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            Kembali ke Beranda
+          </button>
+
+          <button
+            type="button"
+            onClick={resetForAnotherReport}
+            className="w-full min-h-[44px] px-4 py-2.5 text-xs font-semibold text-[#586826] bg-white border border-[#cbe0b0] rounded-full hover:bg-[#e6f2d3] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            Kirim Laporan Kejadian Lain
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Reference Screen 11: Soft Sage Screen with Author Strip + Central 1:1 Square Olive Media Frame
+  return (
+    <div className="space-y-5">
+      {/* Author & Context Header Strip */}
+      <div className="flex items-center justify-between gap-3 bg-[#e6f2d3] border border-[#cbe0b0] rounded-2xl p-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-full bg-[#586826] text-[#dcecc3] flex items-center justify-center shrink-0">
+            <Camera className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[#263015] truncate">
+              {userProfile.displayName}
+            </p>
+            <p className="text-xs text-[#5b6649] truncate">
+              Pelapor Warga · {rt} · RW 013
+            </p>
+          </div>
+        </div>
+
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            aria-label="Batal membuat laporan"
+            className="min-h-[44px] min-w-[44px] rounded-xl bg-[#586826]/10 text-[#586826] hover:bg-[#586826]/20 flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
-            Tutup
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {formError && (
-        <div className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800">
+        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-800">
           {formError}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Photo Capture & Details */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* 1. Real-Time Photo Evidence */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-slate-900">
-                1. Bukti Foto Kejadian Real-Time
-              </label>
-              <span className="text-xs text-slate-500">
-                Kompresi otomatis · Maks 750 KB
-              </span>
-            </div>
-
-            {cameraOpen ? (
-              <div className="border border-slate-300 rounded-lg overflow-hidden bg-slate-950 space-y-3 p-3">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-64 object-cover rounded bg-black"
-                />
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={stopCameraStream}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-200 hover:text-white border border-slate-700 rounded-lg cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span>Batal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={captureFromVideo}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-950 bg-white rounded-lg hover:bg-slate-100 cursor-pointer"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Ambil Foto Sekarang</span>
-                  </button>
-                </div>
-              </div>
-            ) : photoDataUrl ? (
-              <div className="border border-slate-200 rounded-lg p-3 space-y-2.5 bg-slate-50">
-                <img
-                  src={photoDataUrl}
-                  alt="Pratinjau foto kejadian"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-60 object-cover rounded border border-slate-200"
-                />
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Foto siap dikirim ({Math.round((photoDataUrl.length * 0.75) / 1024)} KB)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPhotoDataUrl('')}
-                    className="inline-flex items-center gap-1 text-red-700 hover:underline font-medium cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus / Ulangi</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="border border-dashed border-slate-300 rounded-lg p-5 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="space-y-1 text-center sm:text-left">
-                  <p className="text-sm font-medium text-slate-800">
-                    Ambil foto langsung dari lokasi kejadian
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Gunakan kamera langsung atau pilih foto dari perangkat Anda.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={startLiveCamera}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap cursor-pointer"
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    <span>Buka Kamera</span>
-                  </button>
-                  <label className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer">
-                    <ImagePlus className="w-3.5 h-3.5" />
-                    <span>Unggah Foto</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {cameraError && <p className="text-xs text-amber-700">{cameraError}</p>}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* 1. Iconic 1:1 Square Deep Olive Camera / Photo Box (Reference Screen 11) */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-semibold text-[#263015]">
+              Bukti Foto Kejadian Real-Time
+            </span>
+            <span className="text-[11px] font-mono text-[#5b6649]">Maks 750 KB</span>
           </div>
 
-          {/* 2. Structured Categorization & Urgency */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label htmlFor="report-cat" className="block text-xs font-semibold text-slate-700">
-                Kategori Laporan
+          {cameraOpen ? (
+            <div className="w-full aspect-square max-w-[340px] mx-auto rounded-3xl overflow-hidden bg-[#263015] border-2 border-[#586826] relative flex flex-col">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full flex-1 object-cover bg-black"
+              />
+              <div className="p-3 bg-[#263015] flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={stopCameraStream}
+                  className="min-h-[44px] px-4 text-xs font-medium text-[#dcecc3] border border-[#586826] rounded-full hover:bg-[#586826]/30 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={captureFromVideo}
+                  className="min-h-[44px] flex-1 inline-flex items-center justify-center gap-1.5 px-4 text-xs font-semibold text-[#263015] bg-[#a5cf4c] rounded-full hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Jepret Foto</span>
+                </button>
+              </div>
+            </div>
+          ) : photoDataUrl ? (
+            <div className="w-full aspect-square max-w-[340px] mx-auto rounded-3xl overflow-hidden bg-[#586826] border-2 border-[#586826] relative">
+              <img
+                src={photoDataUrl}
+                alt="Pratinjau foto kejadian"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/45 to-transparent flex items-center justify-between gap-2 text-xs text-white">
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-[#a5cf4c]" />
+                  <span>Siap ({Math.round((photoDataUrl.length * 0.75) / 1024)} KB)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPhotoDataUrl('')}
+                  className="min-h-[38px] inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white font-medium cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Ulangi</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full aspect-square max-w-[340px] mx-auto rounded-3xl bg-[#586826] text-[#dcecc3] p-6 flex flex-col items-center justify-between text-center">
+              <div className="text-[11px] font-medium text-[#dcecc3]/85">
+                Kamera Langsung & Kompresi Cepat
+              </div>
+
+              <div className="flex flex-col items-center space-y-3">
+                <div className="w-20 h-20 rounded-2xl border-[2.5px] border-[#dcecc3] flex items-center justify-center">
+                  <ImagePlus className="w-9 h-9 text-[#dcecc3]" />
+                </div>
+                <p className="text-xs text-[#dcecc3]/90 max-w-[220px] leading-relaxed">
+                  Ambil foto kondisi di sekitar Anda secara langsung atau unggah dari galeri ponsel
+                </p>
+              </div>
+
+              <div className="w-full grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={startLiveCamera}
+                  className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#263015] bg-[#dcecc3] rounded-full hover:bg-[#e6f2d3] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
+                >
+                  <Video className="w-4 h-4" />
+                  <span>Buka Kamera</span>
+                </button>
+
+                <label className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#f7f9f4] bg-[#48561e] border border-[#dcecc3]/35 rounded-full hover:bg-[#3d4919] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap">
+                  <ImagePlus className="w-4 h-4" />
+                  <span>Unggah Foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {cameraError && (
+            <p className="text-xs text-amber-900 bg-amber-100/80 rounded-xl px-3 py-2">
+              {cameraError}
+            </p>
+          )}
+        </div>
+
+        {/* 2. Categorization, RT & Urgency Card */}
+        <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-3xl p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label htmlFor="report-cat" className="block text-xs font-semibold text-[#263015]">
+                Kategori Kejadian
               </label>
               <select
                 id="report-cat"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ReportCategory)}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[44px] px-3.5 py-2 text-xs font-medium bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               >
                 {Object.values(CATEGORY_CATALOG).map((cat) => (
                   <option key={cat.id} value={cat.id}>
@@ -422,15 +559,15 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="report-rt" className="block text-xs font-semibold text-slate-700">
-                Wilayah RT (Lingkungan RW 013)
+            <div className="space-y-1">
+              <label htmlFor="report-rt" className="block text-xs font-semibold text-[#263015]">
+                Wilayah RT (10 RT)
               </label>
               <select
                 id="report-rt"
                 value={rt}
                 onChange={(e) => setRt(e.target.value as RtUnit)}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[44px] px-3.5 py-2 text-xs font-mono font-medium bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               >
                 {RT_UNITS.map((unit) => (
                   <option key={unit} value={unit}>
@@ -441,75 +578,69 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
             </div>
           </div>
 
-          <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
-            <span>
-              Rujukan Instansi Otomatis:{' '}
-              <strong className="text-slate-900">
-                {AGENCY_LABELS[activeCategoryMeta.defaultAgency]}
-              </strong>
+          <div className="text-xs text-[#263015] bg-[#e6f2d3] border border-[#cbe0b0] rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2">
+            <span className="truncate">
+              Instansi: <strong>{AGENCY_LABELS[activeCategoryMeta.defaultAgency]}</strong>
             </span>
-            <span className="font-mono text-slate-500">
-              Target SLA: {activeCategoryMeta.slaHours} jam
+            <span className="font-mono text-[11px] text-[#586826] shrink-0">
+              SLA {activeCategoryMeta.slaHours}j
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <span className="block text-xs font-semibold text-slate-700">Tingkat Urgensi</span>
-              <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-lg">
-                {(['rendah', 'sedang', 'tinggi', 'darurat'] as ReportUrgency[]).map((lvl) => (
-                  <button
-                    key={lvl}
-                    type="button"
-                    onClick={() => setUrgency(lvl)}
-                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                      urgency === lvl
-                        ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {URGENCY_LABELS[lvl]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="block text-xs font-semibold text-slate-700">Visibilitas Laporan</span>
-              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg">
+          <div className="space-y-1.5">
+            <span className="block text-xs font-semibold text-[#263015]">Tingkat Urgensi</span>
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#e6f2d3] rounded-2xl">
+              {(['rendah', 'sedang', 'tinggi', 'darurat'] as ReportUrgency[]).map((lvl) => (
                 <button
+                  key={lvl}
                   type="button"
-                  onClick={() => setVisibility('public')}
-                  className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                    visibility === 'public'
-                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                      : 'text-slate-600 hover:text-slate-900'
+                  onClick={() => setUrgency(lvl)}
+                  className={`min-h-[38px] px-2 text-xs font-medium rounded-xl transition-colors whitespace-nowrap cursor-pointer ${
+                    urgency === lvl
+                      ? 'bg-[#586826] text-[#f7f9f4] font-semibold'
+                      : 'text-[#5b6649] hover:text-[#263015]'
                   }`}
                 >
-                  Publik Warga
+                  {URGENCY_LABELS[lvl]}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setVisibility('private')}
-                  className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                    visibility === 'private'
-                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Khusus Admin
-                </button>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* 3. Title & Description */}
+          <div className="space-y-1.5">
+            <span className="block text-xs font-semibold text-[#263015]">Visibilitas Laporan</span>
+            <div className="grid grid-cols-2 gap-1 p-1 bg-[#e6f2d3] rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setVisibility('public')}
+                className={`min-h-[38px] px-3 text-xs font-medium rounded-xl transition-colors whitespace-nowrap cursor-pointer ${
+                  visibility === 'public'
+                    ? 'bg-[#586826] text-[#f7f9f4] font-semibold'
+                    : 'text-[#5b6649] hover:text-[#263015]'
+                }`}
+              >
+                Publik Warga RW 013
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibility('private')}
+                className={`min-h-[38px] px-3 text-xs font-medium rounded-xl transition-colors whitespace-nowrap cursor-pointer ${
+                  visibility === 'private'
+                    ? 'bg-[#586826] text-[#f7f9f4] font-semibold'
+                    : 'text-[#5b6649] hover:text-[#263015]'
+                }`}
+              >
+                Khusus Admin RW
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="report-title" className="text-xs font-semibold text-slate-700">
+              <label htmlFor="report-title" className="text-xs font-semibold text-[#263015]">
                 Judul Kejadian
               </label>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-[#5b6649]">
                 {title.length}/{VALIDATION_LIMITS.TITLE_MAX}
               </span>
             </div>
@@ -521,84 +652,84 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
               maxLength={VALIDATION_LIMITS.TITLE_MAX}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Contoh: Genangan air & jentik di saluran depan Gang 3"
-              className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="Contoh: Genangan saluran & jentik depan Gang 3"
+              className="w-full min-h-[44px] px-3.5 py-2 text-sm bg-white border border-[#cbe0b0] rounded-xl text-[#263015] placeholder:text-[#5b6649]/60 focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="report-desc" className="text-xs font-semibold text-slate-700">
-                Kronologi & Detail Lokasi
+              <label htmlFor="report-desc" className="text-xs font-semibold text-[#263015]">
+                Kronologi & Patokan Lokasi
               </label>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-[#5b6649]">
                 {description.length}/{VALIDATION_LIMITS.DESC_MAX}
               </span>
             </div>
             <textarea
               id="report-desc"
-              rows={4}
+              rows={3}
               required
               minLength={VALIDATION_LIMITS.DESC_MIN}
               maxLength={VALIDATION_LIMITS.DESC_MAX}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Jelaskan kondisi di lapangan, patokan rumah/jalan, dan dampak bagi warga sekitar..."
-              className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="Jelaskan kondisi lapangan, patokan nomor rumah/jalan, dan dampak bagi warga..."
+              className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#cbe0b0] rounded-xl text-[#263015] placeholder:text-[#5b6649]/60 focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
           </div>
         </div>
 
-        {/* Right Column: Automatic Exact GPS & Map Pin */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* 3. Automatic Exact GPS & Interactive Map Pin */}
+        <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-3xl p-4 space-y-3.5">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">
-                2. Lokasi Geografis Otomatis
+              <h3 className="text-xs font-bold text-[#263015]">
+                Lokasi Geografis Otomatis (GPS)
               </h3>
-              <p className="text-xs text-slate-500">
-                Klik pada peta bila ingin menggeser titik presisi kejadian.
+              <p className="text-[11px] text-[#5b6649]">
+                Ketuk peta untuk menggeser titik presisi kejadian
               </p>
             </div>
             <button
               type="button"
               onClick={detectCurrentGps}
               disabled={locating}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50"
+              className="min-h-[40px] inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-[#586826] bg-[#e6f2d3] border border-[#cbe0b0] rounded-full hover:bg-[#dcecc3] transition-colors whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50"
             >
               {locating ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Crosshair className="w-3.5 h-3.5" />
               )}
-              <span>{locating ? 'Mencari GPS...' : 'Akurasi GPS'}</span>
+              <span>{locating ? 'Mencari...' : 'Akurasi GPS'}</span>
             </button>
           </div>
 
           <InteractiveMap
             center={coords}
             zoom={16}
-            heightClass="h-72"
+            heightClass="h-52"
             mode="picker"
             selectedPin={coords}
             onSelectLocation={handleMapSelect}
           />
 
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2.5 text-xs">
-            <div className="flex items-center justify-between text-slate-600">
-              <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
-                <MapPin className="w-3.5 h-3.5 text-slate-600" />
-                Koordinat Presisi
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between text-[#5b6649]">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[#263015]">
+                <MapPin className="w-3.5 h-3.5 text-[#586826]" />
+                Titik Koordinat
               </span>
-              <span className="font-mono text-slate-900">
+              <span className="font-mono text-[#263015]">
                 {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
                 {gpsAccuracy !== null ? ` (±${gpsAccuracy}m)` : ''}
               </span>
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="report-address" className="block text-[11px] font-medium text-slate-500">
-                Alamat Hasil Deteksi Otomatis (Dapat Disempurnakan)
+              <label htmlFor="report-address" className="block text-[11px] font-medium text-[#5b6649]">
+                Alamat Hasil Deteksi GPS (Dapat Disempurnakan)
               </label>
               <input
                 id="report-address"
@@ -607,33 +738,34 @@ export const CreateReportPanel: React.FC<CreateReportPanelProps> = ({
                 maxLength={VALIDATION_LIMITS.ADDRESS_MAX}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full min-h-[42px] px-3 py-2 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
               />
             </div>
 
             {locationNotice && (
-              <p className="text-[11px] text-amber-700 leading-relaxed">{locationNotice}</p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">{locationNotice}</p>
             )}
           </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Mengirim Laporan Real-Time...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>Kirim Laporan Sekarang</span>
-              </>
-            )}
-          </button>
         </div>
+
+        {/* Primary Full-Width Deep Olive Submit CTA */}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full min-h-[50px] inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Mengirim Laporan Real-Time...</span>
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              <span>Kirim Laporan Sekarang</span>
+            </>
+          )}
+        </button>
       </form>
     </div>
   );

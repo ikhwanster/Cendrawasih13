@@ -121,28 +121,29 @@ export const TrendAnalyticsView: React.FC<TrendAnalyticsViewProps> = ({
 
   const highRiskZoneCount = hotspots.filter((h) => h.riskLevel === 'tinggi').length;
   const watchZoneCount = hotspots.filter((h) => h.riskLevel === 'waspada').length;
+  const safeZoneCount = Math.max(0, hotspots.length - highRiskZoneCount - watchZoneCount);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Analisis Tren & Pemetaan Area Rawan
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Pemetaan spasial titik rawan berdasarkan frekuensi laporan, tingkat urgensi, pola waktu kejadian, serta indeks jentik (ABJ) per RT.
-          </p>
-        </div>
+    <div className="space-y-5">
+      {/* Reference Screen 8 Motif: Dark Organic Olive Header Banner + Overlapping Olive Summary Cards */}
+      <section className="rounded-3xl overflow-hidden border border-[#cbe0b0] bg-white">
+        <div className="bg-gradient-to-br from-[#263015] via-[#3c4b1a] to-[#586826] p-5 pb-10 text-[#f7f9f4] space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h1 className="text-base font-bold tracking-tight">
+                Analisis Tren & Peta Rawan
+              </h1>
+              <p className="text-xs text-[#dcecc3]/85">
+                Pemetaan kerawanan lokasi & waktu kejadian RW 013
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <label htmlFor="trend-cat-filter" className="text-xs font-medium text-slate-600">
-            Filter Kategori:
-          </label>
           <select
-            id="trend-cat-filter"
+            aria-label="Filter Kategori Tren"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as 'ALL' | ReportCategory)}
-            className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full min-h-[42px] px-3.5 py-2 text-xs font-medium bg-[#f7f9f4] text-[#263015] rounded-full focus:outline-none focus:ring-2 focus:ring-[#a5cf4c]"
           >
             <option value="ALL">Semua Kategori Kejadian</option>
             {Object.values(CATEGORY_CATALOG).map((c) => (
@@ -152,120 +153,119 @@ export const TrendAnalyticsView: React.FC<TrendAnalyticsViewProps> = ({
             ))}
           </select>
         </div>
-      </div>
 
-      {/* Top Vulnerability Summary Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Zona Risiko Tinggi (Prioritas Intervensi)</span>
-            <ShieldAlert className="w-4 h-4 text-red-700" />
-          </div>
-          <p className="text-3xl font-bold font-mono tabular-nums text-red-700">
-            {highRiskZoneCount}{' '}
-            <span className="text-sm font-normal text-slate-500">Wilayah RT</span>
-          </p>
-          <p className="text-xs text-slate-500">
-            Skor komposit ≥ 18, laporan darurat berulang, atau ABJ &lt; 90%
-          </p>
-        </div>
+        {/* Overlapping Olive Summary Cards with Matcha Progress Bars (Screen 8) */}
+        <div className="px-4 pb-4 -mt-6 space-y-2.5">
+          <div className="bg-[#586826] text-[#f7f9f4] rounded-2xl p-4 shadow-sm space-y-2.5 border border-[#dcecc3]/25">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#dcecc3]">Distribusi Zona Kerawanan RT</span>
+              <span className="font-mono text-[#a5cf4c] font-bold">10 Wilayah RT</span>
+            </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Zona Waspada Pemantauan</span>
-            <AlertTriangle className="w-4 h-4 text-amber-700" />
-          </div>
-          <p className="text-3xl font-bold font-mono tabular-nums text-amber-700">
-            {watchZoneCount}{' '}
-            <span className="text-sm font-normal text-slate-500">Wilayah RT</span>
-          </p>
-          <p className="text-xs text-slate-500">
-            Terdapat laporan aktif belum tuntas atau ABJ antara 90%–94,9%
-          </p>
-        </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-[#48561e] rounded-xl p-2.5 space-y-0.5">
+                <div className="flex items-center justify-center gap-1 text-[11px] text-red-200">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Rawan</span>
+                </div>
+                <p className="text-xl font-bold font-mono tabular-nums">{highRiskZoneCount}</p>
+              </div>
+              <div className="bg-[#48561e] rounded-xl p-2.5 space-y-0.5">
+                <div className="flex items-center justify-center gap-1 text-[11px] text-amber-200">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Waspada</span>
+                </div>
+                <p className="text-xl font-bold font-mono tabular-nums">{watchZoneCount}</p>
+              </div>
+              <div className="bg-[#48561e] rounded-xl p-2.5 space-y-0.5">
+                <div className="flex items-center justify-center gap-1 text-[11px] text-[#a5cf4c]">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Aman</span>
+                </div>
+                <p className="text-xl font-bold font-mono tabular-nums">{safeZoneCount}</p>
+              </div>
+            </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Zona Terkendali</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+            <div className="w-full h-2 rounded-full bg-[#3d4919] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#a5cf4c]"
+                style={{ width: `${Math.max(10, safeZoneCount * 10)}%` }}
+              />
+            </div>
           </div>
-          <p className="text-3xl font-bold font-mono tabular-nums text-emerald-700">
-            {Math.max(0, hotspots.length - highRiskZoneCount - watchZoneCount)}{' '}
-            <span className="text-sm font-normal text-slate-500">Wilayah RT</span>
-          </p>
-          <p className="text-xs text-slate-500">
-            Lingkungan kondusif tanpa antrean insiden kritis
-          </p>
         </div>
-      </div>
+      </section>
 
       {/* Spatial Hotspot Map */}
-      <section className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <section className="bg-white border border-[#cbe0b0] rounded-3xl p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-              <MapIcon className="w-4 h-4 text-slate-700" />
-              <span>Peta Spasial Area Rawan & Sebaran Titik Kejadian</span>
+            <h2 className="text-sm font-bold text-[#263015] flex items-center gap-1.5">
+              <MapIcon className="w-4 h-4 text-[#586826]" />
+              <span>Peta Spasial Zona Rawan</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Radius lingkaran merepresentasikan indeks kerawanan komposit tiap RT. Klik lingkaran atau pin untuk rincian.
+            <p className="text-[11px] text-[#5b6649]">
+              Radius lingkaran sesuai skor kerawanan tiap RT
             </p>
           </div>
-          <div className="flex items-center gap-4 text-xs text-slate-600">
-            <span>Merah: Risiko Tinggi</span>
-            <span aria-hidden="true">·</span>
-            <span>Kuning: Waspada</span>
-            <span aria-hidden="true">·</span>
-            <span>Hijau: Terkendali</span>
-          </div>
+          <span className="text-[11px] font-mono text-[#586826]">
+            {filteredReports.length} titik
+          </span>
         </div>
 
         <InteractiveMap
           center={mapCenter}
           zoom={15}
-          heightClass="h-[420px]"
+          heightClass="h-64"
           mode="explorer"
           reports={filteredReports}
           hotspots={hotspots}
           showHotspots={true}
           onSelectReport={onSelectReport}
         />
+
+        <div className="flex items-center justify-center gap-3 text-[11px] text-[#5b6649]">
+          <span>Merah: Rawan</span>
+          <span aria-hidden="true">·</span>
+          <span>Kuning: Waspada</span>
+          <span aria-hidden="true">·</span>
+          <span>Olive: Terkendali</span>
+        </div>
       </section>
 
-      {/* Temporal Analysis: 14-Day Trend + Time-of-Day Windows */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">
-                Tren Frekuensi Laporan (14 Hari Terakhir)
-              </h2>
-              <p className="text-xs text-slate-500">
-                Jumlah laporan harian beserta proporsi insiden berurgensi tinggi/darurat
-              </p>
-            </div>
-            <span className="text-xs font-mono text-slate-500">
-              Total: {filteredReports.length} laporan
-            </span>
+      {/* 14-Day Daily Incident Trend */}
+      <section className="bg-[#dcecc3] border border-[#cbe0b0] rounded-3xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-[#263015]">Tren 14 Hari Terakhir</h2>
+            <p className="text-[11px] text-[#5b6649]">
+              Frekuensi laporan harian & proporsi darurat
+            </p>
           </div>
+          <span className="text-xs font-mono font-bold text-[#586826]">
+            {filteredReports.length} lap
+          </span>
+        </div>
 
-          <div className="h-52 pt-4 flex items-end justify-between gap-2 border-b border-slate-200 pb-2">
+        <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3.5 space-y-2">
+          <div className="h-40 pt-3 flex items-end justify-between gap-1.5 border-b border-[#cbe0b0] pb-2">
             {dailySeries.map((day) => {
-              const heightPct = day.count === 0 ? 4 : Math.max(12, Math.round((day.count / maxDailyCount) * 100));
+              const heightPct =
+                day.count === 0 ? 5 : Math.max(14, Math.round((day.count / maxDailyCount) * 100));
               const urgentPct =
                 day.count > 0 ? Math.round((day.urgentCount / day.count) * 100) : 0;
               return (
                 <div
                   key={day.key}
-                  className="flex-1 flex flex-col items-center justify-end h-full group"
+                  className="flex-1 flex flex-col items-center justify-end h-full"
                   title={`${day.key}: ${day.count} laporan (${day.urgentCount} tinggi/darurat)`}
                 >
-                  <span className="text-[10px] font-mono tabular-nums text-slate-500 mb-1">
+                  <span className="text-[9px] font-mono tabular-nums text-[#5b6649] mb-0.5">
                     {day.count > 0 ? day.count : ''}
                   </span>
                   <div
-                    className={`w-full max-w-7 rounded-t transition-opacity ${
-                      day.count === 0 ? 'bg-slate-100' : 'bg-slate-800 group-hover:opacity-85'
+                    className={`w-full max-w-5 rounded-t-md ${
+                      day.count === 0 ? 'bg-[#e6f2d3]' : 'bg-[#586826]'
                     } relative overflow-hidden`}
                     style={{ height: `${heightPct}%` }}
                   >
@@ -280,126 +280,104 @@ export const TrendAnalyticsView: React.FC<TrendAnalyticsViewProps> = ({
               );
             })}
           </div>
-          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+          <div className="flex items-center justify-between text-[9px] font-mono text-[#5b6649]">
             {dailySeries.map((day, idx) => (
-              <span key={day.key} className={idx % 2 === 1 ? 'hidden sm:inline' : ''}>
+              <span key={day.key} className={idx % 3 !== 0 ? 'hidden sm:inline' : ''}>
                 {day.shortLabel}
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-4 text-xs text-slate-500 pt-1">
-            <span>Batang Gelap: Laporan Reguler</span>
-            <span aria-hidden="true">·</span>
-            <span className="text-red-700 font-medium">Segmen Merah: Urgensi Tinggi / Darurat</span>
-          </div>
         </div>
+      </section>
 
-        {/* Time-of-Day Pattern & Category Share */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-5 space-y-5">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-700" />
-              <span>Pola Waktu Rawan Kejadian</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Rentang jam dengan intensitas pelaporan tertinggi untuk penjadwalan patroli & petugas
-            </p>
-          </div>
-
-          <div className="space-y-3.5">
-            {timeWindows.map((w) => (
-              <div key={w.id} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-800">{w.label}</span>
-                  <span className="font-mono tabular-nums text-slate-600">
-                    {w.count} laporan ({w.pct}%)
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-slate-900 rounded-full"
-                    style={{ width: `${Math.max(w.count > 0 ? 6 : 0, w.barWidth)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-3 border-t border-slate-200 space-y-2.5">
-            <h3 className="text-xs font-semibold text-slate-700">
-              Distribusi Kategori & Tingkat Penyelesaian
-            </h3>
-            {categoryBreakdown.slice(0, 4).map((cat) => (
-              <div key={cat.id} className="flex items-center justify-between text-xs">
-                <span className="text-slate-700 truncate pr-2">{cat.shortLabel}</span>
-                <span className="font-mono tabular-nums text-slate-600 shrink-0">
-                  {cat.count} masuk · {cat.resolved} selesai ({cat.sharePct}%)
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* RT Vulnerability Matrix Table */}
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200">
-          <h2 className="text-base font-semibold text-slate-900">
-            Matriks Peringkat Kerawanan Wilayah per RT (RW 013)
+      {/* Time-of-Day Windows & Category Share (Olive Card Style) */}
+      <section className="bg-[#586826] text-[#f7f9f4] rounded-3xl p-4 space-y-4">
+        <div>
+          <h2 className="text-sm font-bold flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-[#a5cf4c]" />
+            <span>Pola Jam Rawan Kejadian</span>
           </h2>
-          <p className="text-xs text-slate-500">
-            Diurutkan berdasarkan skor risiko tertinggi untuk membantu pengurus RW & instansi memprioritaskan tindak lanjut lapangan.
+          <p className="text-[11px] text-[#dcecc3]/85">
+            Intensitas waktu pelaporan warga untuk jadwal patroli
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="space-y-3">
+          {timeWindows.map((w) => (
+            <div key={w.id} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-[#f7f9f4]">{w.label}</span>
+                <span className="font-mono tabular-nums text-[#dcecc3]">
+                  {w.count} ({w.pct}%)
+                </span>
+              </div>
+              <div className="w-full h-2 bg-[#48561e] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#a5cf4c] rounded-full"
+                  style={{ width: `${Math.max(w.count > 0 ? 6 : 0, w.barWidth)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="pt-3 border-t border-[#dcecc3]/20 space-y-2">
+          <h3 className="text-xs font-bold text-[#dcecc3]">Distribusi Sektor Teratas</h3>
+          {categoryBreakdown.slice(0, 4).map((cat) => (
+            <div key={cat.id} className="flex items-center justify-between text-xs">
+              <span className="text-[#f7f9f4] truncate pr-2">{cat.shortLabel}</span>
+              <span className="font-mono tabular-nums text-[#a5cf4c] shrink-0">
+                {cat.count} lap · {cat.resolved} tuntas
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* RT Vulnerability Ranking List */}
+      <section className="bg-white border border-[#cbe0b0] rounded-3xl overflow-hidden">
+        <div className="px-4 py-3.5 border-b border-[#cbe0b0] bg-[#e6f2d3]/60">
+          <h2 className="text-xs font-bold text-[#263015]">
+            Peringkat Skor Risiko 10 RT (RW 013)
+          </h2>
+          <p className="text-[11px] text-[#5b6649]">
+            Urutan prioritas intervensi lapangan pengurus & dinas
+          </p>
+        </div>
+
+        <div className="overflow-x-auto phone-scroll">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                <th className="py-3 px-4 font-semibold">Wilayah RT</th>
-                <th className="py-3 px-4 font-semibold text-right">Total Laporan</th>
-                <th className="py-3 px-4 font-semibold text-right">Belum Selesai</th>
-                <th className="py-3 px-4 font-semibold text-right">Tinggi / Darurat</th>
-                <th className="py-3 px-4 font-semibold text-right">ABJ Jentik</th>
-                <th className="py-3 px-4 font-semibold">Isu Dominan</th>
-                <th className="py-3 px-4 font-semibold text-right">Skor Risiko</th>
-                <th className="py-3 px-4 font-semibold">Status Wilayah</th>
+              <tr className="border-b border-[#cbe0b0] bg-[#f7f9f4] text-[#5b6649]">
+                <th className="py-2.5 px-3 font-semibold">RT</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Aktif</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">ABJ</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Skor</th>
+                <th className="py-2.5 px-3 font-semibold">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#e6f2d3]">
               {rankedHotspots.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50/80">
-                  <td className="py-2.5 px-4 font-mono font-semibold text-slate-900">
+                <tr key={row.id} className="hover:bg-[#f7f9f4]">
+                  <td className="py-2.5 px-3 font-mono font-bold text-[#263015] whitespace-nowrap">
                     {row.rt}
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
-                    {row.reportCount}
+                  <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
+                    {row.unresolvedCount}/{row.reportCount}
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
-                    {row.unresolvedCount}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
-                    {row.highUrgencyCount}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                  <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
                     {row.abjPercent === null ? '–' : `${row.abjPercent}%`}
                   </td>
-                  <td className="py-2.5 px-4 text-slate-700">
-                    {row.reportCount > 0
-                      ? CATEGORY_CATALOG[row.dominantCategory as ReportCategory]?.shortLabel ||
-                        row.dominantCategory
-                      : '–'}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono tabular-nums font-semibold text-slate-900">
+                  <td className="py-2.5 px-2.5 text-right font-mono tabular-nums font-bold text-[#263015]">
                     {row.riskScore}
                   </td>
-                  <td className="py-2.5 px-4">
+                  <td className="py-2.5 px-3 whitespace-nowrap">
                     {row.riskLevel === 'tinggi' ? (
-                      <span className="font-semibold text-red-700">Prioritas Tinggi (Rawan)</span>
+                      <span className="font-bold text-red-700">Rawan</span>
                     ) : row.riskLevel === 'waspada' ? (
-                      <span className="font-medium text-amber-700">Waspada</span>
+                      <span className="font-semibold text-amber-800">Waspada</span>
                     ) : (
-                      <span className="text-emerald-700">Terkendali</span>
+                      <span className="font-medium text-[#586826]">Terkendali</span>
                     )}
                   </td>
                 </tr>

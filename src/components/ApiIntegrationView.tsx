@@ -37,7 +37,7 @@ const PRESET_ENDPOINTS = [
     requiresAuth: true,
   },
   {
-    label: 'Rekapitulasi Laporan Per RT — 10 RT (Pengurus RW / Kelurahan)',
+    label: 'Rekapitulasi Laporan 10 RT (Kelurahan)',
     path: '/api/v1/reports/by-rt',
     requiresAuth: true,
   },
@@ -129,229 +129,187 @@ export const ApiIntegrationView: React.FC<ApiIntegrationViewProps> = ({ dispatch
   };
 
   return (
-    <div className="space-y-8">
-      <div className="border-b border-slate-200 pb-5">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          Integrasi Akses API Instansi Terkait
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          Gateway interoperabilitas REST JSON, GeoJSON (RFC 7946), dan Webhook bertanda tangan HMAC-SHA256 untuk menghubungkan laporan warga & data Jumantik RW 013 dengan Puskesmas, Dinas PU, DLH, SDA, dan Satpol PP.
+    <div className="space-y-5">
+      {/* Olive Interoperability Header */}
+      <section className="bg-[#586826] text-[#f7f9f4] rounded-3xl p-5 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-base font-bold flex items-center gap-2">
+            <Globe className="w-4 h-4 text-[#a5cf4c]" />
+            <span>Gateway API Instansi Terkait</span>
+          </h1>
+          <span className="text-xs font-mono text-[#a5cf4c]">{agencies.length} dinas</span>
+        </div>
+        <p className="text-xs text-[#dcecc3]/90 leading-relaxed">
+          Interoperabilitas REST JSON, GeoJSON (RFC 7946), rekap 10 RT, dan Webhook HMAC-SHA256 untuk Puskesmas, Dinas PU, DLH, SDA, dan Satpol PP.
         </p>
-      </div>
+      </section>
 
-      {/* Connected Municipal Agencies Directory */}
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-slate-700" />
-              <span>Katalog Instansi & Kontrak Endpoint</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Pemetaan otomatis kategori laporan ke endpoint konsumsi data instansi pemerintah daerah
-            </p>
-          </div>
-          <span className="text-xs font-mono text-slate-500">{agencies.length} instansi aktif</span>
+      {/* Connected Municipal Agencies Cards */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-xs font-bold text-[#263015]">Katalog Instansi & Endpoint</h2>
+          <span className="text-[11px] text-[#5b6649]">Ketuk Uji untuk panggil API</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                <th className="py-2.5 px-4 font-semibold">Kode Instansi</th>
-                <th className="py-2.5 px-4 font-semibold">Nama Instansi Terkait</th>
-                <th className="py-2.5 px-4 font-semibold">Protokol Data</th>
-                <th className="py-2.5 px-4 font-semibold text-right">Target SLA</th>
-                <th className="py-2.5 px-4 font-semibold">Endpoint Integrasi</th>
-                <th className="py-2.5 px-4 font-semibold text-right">Uji Langsung</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {agencies.map((ag) => (
-                <tr key={ag.code} className="hover:bg-slate-50/80">
-                  <td className="py-3 px-4 font-mono font-semibold text-slate-900 whitespace-nowrap">
-                    {ag.code}
-                  </td>
-                  <td className="py-3 px-4 text-slate-800">{ag.name}</td>
-                  <td className="py-3 px-4 text-slate-600">{ag.protocol}</td>
-                  <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-700">
-                    {ag.slaHours} jam
-                  </td>
-                  <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
-                    {ag.endpointPath}
-                  </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedEndpoint(ag.endpointPath);
-                        executeLiveApiRequest(ag.endpointPath);
-                      }}
-                      className="text-xs font-semibold text-slate-900 hover:underline cursor-pointer"
-                    >
-                      Jalankan GET
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {agencies.map((ag) => (
+            <div
+              key={ag.code}
+              className="bg-white border border-[#cbe0b0] rounded-2xl p-3.5 flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs font-bold text-[#263015] truncate">{ag.name}</p>
+                <p className="text-[11px] text-[#5b6649] truncate">
+                  {ag.protocol} · SLA {ag.slaHours}j
+                </p>
+                <p className="text-[10px] font-mono text-[#586826] truncate">{ag.endpointPath}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedEndpoint(ag.endpointPath);
+                  executeLiveApiRequest(ag.endpointPath);
+                }}
+                className="min-h-[38px] px-3.5 py-1.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] shrink-0 cursor-pointer whitespace-nowrap"
+              >
+                Uji GET
+              </button>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* Live Interactive API Console */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-          <div className="space-y-1">
-            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-slate-700" />
-              <span>Konsol Pengujian REST & GeoJSON</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Uji langsung endpoint server dengan token autentikasi sesi Anda saat ini.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="api-endpoint-select" className="block text-xs font-semibold text-slate-700">
-              Pilih Endpoint API
-            </label>
-            <select
-              id="api-endpoint-select"
-              value={selectedEndpoint}
-              onChange={(e) => setSelectedEndpoint(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-            >
-              {PRESET_ENDPOINTS.map((ep) => (
-                <option key={ep.path} value={ep.path}>
-                  {ep.label} ({ep.path})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => executeLiveApiRequest(selectedEndpoint)}
-            disabled={testing}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {testing ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Memanggil Endpoint...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5" />
-                <span>Kirim Permintaan API Sekarang</span>
-              </>
-            )}
-          </button>
-
-          <div className="space-y-1.5 pt-2 border-t border-slate-200">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">Contoh Integrasi cURL</span>
-              <button
-                type="button"
-                onClick={handleCopyCurl}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 cursor-pointer"
-              >
-                {copiedCurl ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-700" />
-                    <span className="text-emerald-700">Tersalin</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Salin</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <pre className="p-3 rounded-lg bg-slate-950 text-slate-100 text-[11px] font-mono overflow-x-auto leading-relaxed">
-              {curlSnippet}
-            </pre>
-          </div>
+      <section className="bg-[#dcecc3] border border-[#cbe0b0] rounded-3xl p-4 space-y-3.5">
+        <div className="space-y-0.5">
+          <h2 className="text-xs font-bold text-[#263015] flex items-center gap-1.5">
+            <Code2 className="w-4 h-4 text-[#586826]" />
+            <span>Konsol Pengujian REST & GeoJSON</span>
+          </h2>
+          <p className="text-[11px] text-[#5b6649]">
+            Menggunakan Bearer Token sesi autentikasi Anda secara langsung
+          </p>
         </div>
 
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-            <span className="text-xs font-mono font-semibold text-slate-800 truncate">
-              GET {selectedEndpoint}
-            </span>
+        <select
+          aria-label="Pilih Endpoint API"
+          value={selectedEndpoint}
+          onChange={(e) => setSelectedEndpoint(e.target.value)}
+          className="w-full min-h-[42px] px-3.5 py-2 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+        >
+          {PRESET_ENDPOINTS.map((ep) => (
+            <option key={ep.path} value={ep.path}>
+              {ep.label} ({ep.path})
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={() => executeLiveApiRequest(selectedEndpoint)}
+          disabled={testing}
+          className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+        >
+          {testing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Memanggil Endpoint...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              <span>Kirim Permintaan API</span>
+            </>
+          )}
+        </button>
+
+        {/* Response Output */}
+        <div className="rounded-2xl overflow-hidden border border-[#586826]/40 bg-[#263015]">
+          <div className="px-3.5 py-2 border-b border-[#586826]/40 flex items-center justify-between text-[11px] font-mono text-[#dcecc3]">
+            <span className="truncate">GET {selectedEndpoint}</span>
             {httpStatus !== null && (
-              <span className="text-xs font-mono tabular-nums text-slate-600 shrink-0">
-                HTTP{' '}
-                <strong className={httpStatus < 400 ? 'text-emerald-700' : 'text-red-700'}>
-                  {httpStatus}
-                </strong>{' '}
-                · {latencyMs} ms
+              <span className="shrink-0 text-[#a5cf4c]">
+                HTTP {httpStatus} · {latencyMs}ms
               </span>
             )}
           </div>
-          <pre className="p-4 bg-slate-950 text-slate-100 text-xs font-mono overflow-auto max-h-96 leading-relaxed">
-            {responseJson || '// Menunggu respons dari server API...'}
+          <pre className="p-3.5 text-[#f7f9f4] text-[11px] font-mono overflow-auto max-h-60 leading-relaxed phone-scroll">
+            {responseJson || 'Menunggu respons server API...'}
+          </pre>
+        </div>
+
+        {/* cURL Snippet */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-[#263015]">Perintah cURL Instansi</span>
+            <button
+              type="button"
+              onClick={handleCopyCurl}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#586826] cursor-pointer"
+            >
+              {copiedCurl ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Tersalin</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin</span>
+                </>
+              )}
+            </button>
+          </div>
+          <pre className="p-3 rounded-2xl bg-[#263015] text-[#dcecc3] text-[10px] font-mono overflow-x-auto leading-relaxed">
+            {curlSnippet}
           </pre>
         </div>
       </section>
 
       {/* Outbound Agency Dispatches Ledger */}
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+      <section className="bg-white border border-[#cbe0b0] rounded-3xl p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-              <Webhook className="w-4 h-4 text-slate-700" />
-              <span>Riwayat Pengiriman Tiket API ke Instansi</span>
+            <h2 className="text-xs font-bold text-[#263015] flex items-center gap-1.5">
+              <Webhook className="w-4 h-4 text-[#586826]" />
+              <span>Riwayat Pengiriman Tiket API</span>
             </h2>
-            <p className="text-xs text-slate-500">
-              Log sinkronisasi laporan yang diteruskan dari Dashboard Admin ke instansi terkait
+            <p className="text-[11px] text-[#5b6649]">
+              Tiket laporan yang diteruskan ke instansi terkait
             </p>
           </div>
-          <span className="text-xs font-mono text-slate-500">
-            {dispatches.length} tiket tercatat
+          <span className="text-[11px] font-mono font-bold text-[#586826]">
+            {dispatches.length} tiket
           </span>
         </div>
 
         {dispatches.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
-            Belum ada pengiriman tiket instansi. Saat Admin menindaklanjuti laporan dengan opsi penerusan API, nomor referensi akan tercatat otomatis di sini.
+          <div className="py-5 text-center text-xs text-[#5b6649]">
+            Belum ada tiket instansi terkirim dari Dashboard Admin.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                  <th className="py-2.5 px-4 font-semibold">No. Referensi API</th>
-                  <th className="py-2.5 px-4 font-semibold">Instansi Tujuan</th>
-                  <th className="py-2.5 px-4 font-semibold">Ringkasan Payload</th>
-                  <th className="py-2.5 px-4 font-semibold">Prioritas</th>
-                  <th className="py-2.5 px-4 font-semibold">Status Integrasi</th>
-                  <th className="py-2.5 px-4 font-semibold text-right">Waktu Kirim</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {dispatches.map((d) => (
-                  <tr key={d.id} className="hover:bg-slate-50/80">
-                    <td className="py-3 px-4 font-mono font-semibold text-slate-900 whitespace-nowrap">
-                      {d.referenceNumber}
-                    </td>
-                    <td className="py-3 px-4 text-slate-800 whitespace-nowrap">{d.agencyName}</td>
-                    <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
-                      {d.payloadSummary}
-                    </td>
-                    <td className="py-3 px-4 capitalize text-slate-700">{d.priority}</td>
-                    <td className="py-3 px-4 font-medium text-emerald-700 capitalize">
-                      {d.dispatchStatus.replace(/_/g, ' ')}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                      {formatTimestamp(d.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {dispatches.map((d) => (
+              <div
+                key={d.id}
+                className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 space-y-1 text-xs"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-bold text-[#263015] truncate">
+                    {d.referenceNumber}
+                  </span>
+                  <span className="font-semibold text-[#586826] capitalize shrink-0">
+                    {d.dispatchStatus.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <p className="text-[#263015] font-medium truncate">{d.agencyName}</p>
+                <p className="text-[11px] text-[#5b6649] truncate">{d.payloadSummary}</p>
+                <div className="flex items-center justify-between text-[10px] font-mono text-[#5b6649] pt-0.5">
+                  <span className="uppercase">Prioritas {d.priority}</span>
+                  <span>{formatTimestamp(d.createdAt)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>

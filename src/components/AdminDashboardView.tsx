@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   deleteDoc,
   doc,
@@ -10,6 +10,7 @@ import {
   BellRing,
   CheckCircle2,
   ExternalLink,
+  Image as ImageIcon,
   Loader2,
   MapPin,
   Search,
@@ -54,6 +55,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [selectedReportId, setSelectedReportId] = useState<string | null>(
     reports[0]?.id || null
   );
+  const inspectorRef = useRef<HTMLDivElement | null>(null);
 
   const selectedReport = useMemo(
     () => reports.find((r) => r.id === selectedReportId) || null,
@@ -89,6 +91,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     setAdminNote(rep.adminNote || '');
     setActionFeedback('');
     setActionError('');
+    window.setTimeout(() => {
+      inspectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
   };
 
   const filteredReports = useMemo(() => {
@@ -161,7 +166,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         handleFirestoreError(notifErr, OperationType.CREATE, `notifications/${notifId}`);
       }
 
-      // 3. Optionally trigger Municipal Agency API Dispatch (/api/v1/webhooks/dispatch + agencyDispatches log)
+      // 3. Optionally trigger Municipal Agency API Dispatch
       let dispatchNote = '';
       if (sendAgencyApiDispatch && nextStatus !== 'ditolak') {
         const priorityMap: Record<ReportUrgency, 'normal' | 'tinggi' | 'darurat'> = {
@@ -213,7 +218,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
       setSavingTriage(false);
       setActionFeedback(
-        `Berhasil memperbarui status & mengirim notifikasi push ke pelapor${dispatchNote}`
+        `Status diperbarui & notifikasi push terkirim ke pelapor${dispatchNote}`
       );
     } catch (error) {
       setSavingTriage(false);
@@ -256,97 +261,86 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Dashboard Admin & Triase Laporan
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Verifikasi laporan warga secara efisien, teruskan ke instansi terkait melalui API, dan kirim pembaruan status via notifikasi push otomatis.
-          </p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Mode Petugas Terotorisasi</span>
-        </span>
-      </div>
-
-      {/* KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1">
-          <p className="text-xs text-slate-500">Total Laporan Masuk</p>
-          <p className="text-2xl font-bold font-mono tabular-nums text-slate-900">
-            {metrics.total}
-          </p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1">
-          <p className="text-xs text-slate-500">Menunggu Verifikasi</p>
-          <p className="text-2xl font-bold font-mono tabular-nums text-amber-700">
-            {metrics.waiting}
-          </p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1">
-          <p className="text-xs text-slate-500">Sedang Ditindaklanjuti</p>
-          <p className="text-2xl font-bold font-mono tabular-nums text-sky-700">
-            {metrics.inProgress}
-          </p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1">
-          <p className="text-xs text-slate-500">Selesai Ditangani</p>
-          <p className="text-2xl font-bold font-mono tabular-nums text-emerald-700">
-            {metrics.completed}
-          </p>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari judul laporan, nama pelapor, alamat, atau RT..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-900"
-            />
+    <div className="space-y-5">
+      {/* Admin Olive Header Card */}
+      <section className="bg-[#586826] text-[#f7f9f4] rounded-3xl p-5 space-y-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-base font-bold">Dashboard Admin & Triase</h1>
+            <p className="text-xs text-[#dcecc3]/85">
+              Verifikasi laporan warga, kirim push status, & teruskan API
+            </p>
           </div>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#a5cf4c] shrink-0">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Petugas</span>
+          </span>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label="Filter Kategori"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as 'ALL' | ReportCategory)}
-              className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-            >
-              <option value="ALL">Semua Kategori</option>
-              {Object.values(CATEGORY_CATALOG).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.shortLabel}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="Filter Wilayah RT"
-              value={rtFilter}
-              onChange={(e) => setRtFilter(e.target.value)}
-              className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-            >
-              <option value="ALL">Semua RT</option>
-              {RT_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="bg-[#48561e] rounded-2xl p-2.5">
+            <p className="text-[10px] text-[#dcecc3]">Masuk</p>
+            <p className="text-lg font-bold font-mono tabular-nums">{metrics.total}</p>
+          </div>
+          <div className="bg-[#48561e] rounded-2xl p-2.5">
+            <p className="text-[10px] text-amber-200">Tunggu</p>
+            <p className="text-lg font-bold font-mono tabular-nums">{metrics.waiting}</p>
+          </div>
+          <div className="bg-[#48561e] rounded-2xl p-2.5">
+            <p className="text-[10px] text-[#dcecc3]">Proses</p>
+            <p className="text-lg font-bold font-mono tabular-nums">{metrics.inProgress}</p>
+          </div>
+          <div className="bg-[#48561e] rounded-2xl p-2.5">
+            <p className="text-[10px] text-[#a5cf4c]">Tuntas</p>
+            <p className="text-lg font-bold font-mono tabular-nums">{metrics.completed}</p>
           </div>
         </div>
+      </section>
 
-        {/* Interactive Segmented Status Filter */}
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit">
+      {/* Search & Filters */}
+      <section className="bg-white border border-[#cbe0b0] rounded-3xl p-4 space-y-3">
+        <div className="relative">
+          <Search className="w-4 h-4 text-[#5b6649] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari judul laporan, pelapor, atau alamat..."
+            className="w-full min-h-[42px] pl-9 pr-3.5 py-2 text-xs bg-[#f7f9f4] border border-[#cbe0b0] rounded-full text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            aria-label="Filter Kategori"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as 'ALL' | ReportCategory)}
+            className="min-h-[40px] px-3 py-1.5 text-xs bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+          >
+            <option value="ALL">Semua Kategori</option>
+            {Object.values(CATEGORY_CATALOG).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.shortLabel}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="Filter Wilayah RT"
+            value={rtFilter}
+            onChange={(e) => setRtFilter(e.target.value)}
+            className="min-h-[40px] px-3 py-1.5 text-xs font-mono bg-[#f7f9f4] border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+          >
+            <option value="ALL">Semua 10 RT</option>
+            {RT_UNITS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
           {(
             ['ALL', 'menunggu', 'diverifikasi', 'diproses', 'selesai', 'ditolak'] as const
           ).map((st) => (
@@ -354,339 +348,319 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+              className={`min-h-[36px] px-3 py-1 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 statusFilter === st
-                  ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#a5cf4c] text-[#263015]'
+                  : 'bg-[#f7f9f4] border border-[#cbe0b0] text-[#5b6649] hover:text-[#263015]'
               }`}
             >
-              {st === 'ALL' ? 'Semua Status' : STATUS_LABELS[st]}
+              {st === 'ALL' ? 'Semua' : STATUS_LABELS[st]}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Main Split: Incoming Queue Table + Triage Inspector */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Antrean Laporan Warga ({filteredReports.length})
-            </h2>
-            <span className="text-xs text-slate-500">Klik baris untuk menindaklanjuti</span>
-          </div>
-
-          {filteredReports.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">
-              Tidak ada laporan yang cocok dengan filter saat ini.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                    <th className="py-2.5 px-4 font-semibold">Laporan & Pelapor</th>
-                    <th className="py-2.5 px-3 font-semibold">RT</th>
-                    <th className="py-2.5 px-3 font-semibold">Urgensi</th>
-                    <th className="py-2.5 px-3 font-semibold">Status</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Waktu</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredReports.map((rep) => {
-                    const isSelected = rep.id === selectedReport?.id;
-                    return (
-                      <tr
-                        key={rep.id}
-                        onClick={() => selectReportForTriage(rep)}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected ? 'bg-slate-100/90' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <td className="py-3 px-4 max-w-xs">
-                          <p className="font-semibold text-slate-900 truncate">{rep.title}</p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                            {CATEGORY_CATALOG[rep.category]?.shortLabel} · Oleh {rep.authorName}
-                            {rep.visibility === 'private' ? ' · Tertutup' : ''}
-                          </p>
-                        </td>
-                        <td className="py-3 px-3 font-mono whitespace-nowrap text-slate-800">
-                          {rep.rt}
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <span
-                            className={`font-medium ${
-                              rep.urgency === 'darurat'
-                                ? 'text-red-700 font-semibold'
-                                : rep.urgency === 'tinggi'
-                                ? 'text-amber-700 font-semibold'
-                                : 'text-slate-700'
-                            }`}
-                          >
-                            {URGENCY_LABELS[rep.urgency]}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <span
-                            className={`font-medium ${
-                              rep.status === 'selesai'
-                                ? 'text-emerald-700'
-                                : rep.status === 'menunggu'
-                                ? 'text-amber-700'
-                                : rep.status === 'ditolak'
-                                ? 'text-slate-400'
-                                : 'text-sky-700'
-                            }`}
-                          >
-                            {STATUS_LABELS[rep.status]}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                          {formatTimestamp(rep.createdAt)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* Incoming Queue Horizontal Olive-Thumbnail Cards */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-xs font-bold text-[#263015]">
+            Antrean Laporan ({filteredReports.length})
+          </h2>
+          <span className="text-[11px] text-[#5b6649]">Ketuk kartu untuk triase</span>
         </div>
 
-        {/* Right Column: Triage & Push Notification Dispatch */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-5 space-y-5">
-          {!selectedReport ? (
-            <div className="py-12 text-center text-sm text-slate-500">
-              Pilih salah satu laporan di tabel sebelah kiri untuk memeriksa foto bukti, lokasi GPS, dan mengirim tindak lanjut.
-            </div>
-          ) : (
-            <>
-              <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3.5">
-                <div>
-                  <p className="text-xs text-slate-500">
-                    {selectedReport.rt} · {CATEGORY_CATALOG[selectedReport.category]?.label} · Pelapor:{' '}
-                    {selectedReport.authorName}
-                  </p>
-                  <h3 className="text-base font-semibold text-slate-900 mt-0.5">
-                    {selectedReport.title}
-                  </h3>
-                </div>
+        {filteredReports.length === 0 ? (
+          <div className="bg-white border border-[#cbe0b0] rounded-3xl p-7 text-center text-xs text-[#5b6649]">
+            Tidak ada laporan yang cocok dengan filter saat ini.
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-72 overflow-y-auto phone-scroll pr-0.5">
+            {filteredReports.map((rep) => {
+              const isSelected = rep.id === selectedReport?.id;
+              return (
                 <button
+                  key={rep.id}
                   type="button"
-                  onClick={() => handleDeleteReport(selectedReport.id)}
-                  title="Hapus laporan"
-                  className="p-1.5 text-slate-400 hover:text-red-700 rounded transition-colors cursor-pointer"
+                  onClick={() => selectReportForTriage(rep)}
+                  className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#dcecc3] border-[#586826] ring-2 ring-[#586826]/25'
+                      : 'bg-white border-[#cbe0b0] hover:bg-[#f7f9f4]'
+                  }`}
                 >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                  <div className="w-14 h-14 rounded-xl bg-[#586826] text-[#dcecc3] overflow-hidden shrink-0 flex items-center justify-center">
+                    {rep.photoDataUrl ? (
+                      <img
+                        src={rep.photoDataUrl}
+                        alt={rep.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="w-5 h-5" />
+                    )}
+                  </div>
 
-              {selectedReport.photoDataUrl ? (
-                <img
-                  src={selectedReport.photoDataUrl}
-                  alt={selectedReport.title}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-52 object-cover rounded-lg border border-slate-200"
-                />
-              ) : (
-                <div className="w-full h-24 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-xs text-slate-400">
-                  Laporan dikirim tanpa lampiran foto
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <p className="text-[11px] text-[#5b6649] truncate">
+                      <span className="font-mono font-semibold text-[#586826]">{rep.rt}</span> ·{' '}
+                      {CATEGORY_CATALOG[rep.category]?.shortLabel} · {URGENCY_LABELS[rep.urgency]}
+                    </p>
+                    <p className="text-xs font-bold text-[#263015] truncate">{rep.title}</p>
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-[#5b6649]">
+                      <span className="truncate">Oleh {rep.authorName}</span>
+                      <span className="font-semibold text-[#263015] shrink-0">
+                        {STATUS_LABELS[rep.status]}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Triage & Push Notification Dispatch Card */}
+      <div
+        ref={inspectorRef}
+        className="bg-[#dcecc3] border border-[#cbe0b0] rounded-3xl p-4 space-y-4"
+      >
+        {!selectedReport ? (
+          <div className="py-8 text-center text-xs text-[#5b6649]">
+            Pilih salah satu kartu laporan di atas untuk memeriksa bukti foto, lokasi GPS, dan mengirim tindak lanjut.
+          </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3 border-b border-[#cbe0b0] pb-3">
+              <div className="min-w-0">
+                <p className="text-[11px] text-[#5b6649]">
+                  {selectedReport.rt} · {CATEGORY_CATALOG[selectedReport.category]?.shortLabel} ·{' '}
+                  {formatTimestamp(selectedReport.createdAt)}
+                </p>
+                <h3 className="text-sm font-bold text-[#263015] mt-0.5 leading-snug">
+                  {selectedReport.title}
+                </h3>
+                <p className="text-[11px] text-[#5b6649]">Pelapor: {selectedReport.authorName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteReport(selectedReport.id)}
+                title="Hapus laporan"
+                className="min-h-[38px] min-w-[38px] rounded-xl bg-white/80 text-[#5b6649] hover:text-red-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {selectedReport.photoDataUrl ? (
+              <img
+                src={selectedReport.photoDataUrl}
+                alt={selectedReport.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-48 object-cover rounded-2xl border border-[#cbe0b0]"
+              />
+            ) : (
+              <div className="w-full py-5 rounded-2xl bg-[#f7f9f4] border border-[#cbe0b0] text-center text-xs text-[#5b6649]">
+                Laporan dikirim tanpa lampiran foto
+              </div>
+            )}
+
+            <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3.5 space-y-2 text-xs text-[#263015]">
+              <p className="leading-relaxed">{selectedReport.description}</p>
+              <div className="pt-2 border-t border-[#e6f2d3] flex items-center justify-between gap-2 text-[#5b6649]">
+                <span className="inline-flex items-center gap-1 truncate">
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-[#586826]" />
+                  <span className="truncate">{selectedReport.address}</span>
+                </span>
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${selectedReport.latitude}&mlon=${selectedReport.longitude}#map=18/${selectedReport.latitude}/${selectedReport.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-mono text-[#586826] font-semibold hover:underline shrink-0"
+                >
+                  <span>
+                    {selectedReport.latitude.toFixed(4)}, {selectedReport.longitude.toFixed(4)}
+                  </span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleSaveTriage}
+              className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-4 space-y-3.5"
+            >
+              <h4 className="text-xs font-bold text-[#263015]">
+                Formulir Tindak Lanjut & Notifikasi Push
+              </h4>
+
+              {actionFeedback && (
+                <div className="p-3 rounded-xl bg-[#dcecc3] border border-[#586826]/30 text-xs text-[#263015] font-medium flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#586826] shrink-0 mt-0.5" />
+                  <span>{actionFeedback}</span>
                 </div>
               )}
 
-              <div className="space-y-2 text-xs text-slate-700">
-                <p className="leading-relaxed">{selectedReport.description}</p>
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-slate-600">
-                  <span className="inline-flex items-center gap-1 truncate">
-                    <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-500" />
-                    <span className="truncate">{selectedReport.address}</span>
-                  </span>
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${selectedReport.latitude}&mlon=${selectedReport.longitude}#map=18/${selectedReport.latitude}/${selectedReport.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono text-slate-900 hover:underline shrink-0"
+              {actionError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800">
+                  {actionError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label htmlFor="triage-status" className="block text-[11px] font-semibold text-[#263015]">
+                    Status Laporan
+                  </label>
+                  <select
+                    id="triage-status"
+                    value={nextStatus}
+                    onChange={(e) => setNextStatus(e.target.value as ReportStatus)}
+                    className="w-full min-h-[42px] px-2.5 py-1.5 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
                   >
-                    <span>
-                      {selectedReport.latitude.toFixed(4)}, {selectedReport.longitude.toFixed(4)}
-                    </span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveTriage} className="space-y-4 pt-3 border-t border-slate-200">
-                <h4 className="text-xs font-semibold text-slate-900">
-                  Formulir Tindak Lanjut & Notifikasi Push
-                </h4>
-
-                {actionFeedback && (
-                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{actionFeedback}</span>
-                  </div>
-                )}
-
-                {actionError && (
-                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800">
-                    {actionError}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label htmlFor="triage-status" className="block text-xs font-medium text-slate-700">
-                      Status Laporan
-                    </label>
-                    <select
-                      id="triage-status"
-                      value={nextStatus}
-                      onChange={(e) => setNextStatus(e.target.value as ReportStatus)}
-                      className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    >
-                      {(Object.keys(STATUS_LABELS) as ReportStatus[]).map((st) => (
-                        <option key={st} value={st}>
-                          {STATUS_LABELS[st]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="triage-urgency" className="block text-xs font-medium text-slate-700">
-                      Klasifikasi Urgensi
-                    </label>
-                    <select
-                      id="triage-urgency"
-                      value={nextUrgency}
-                      onChange={(e) => setNextUrgency(e.target.value as ReportUrgency)}
-                      className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    >
-                      {(Object.keys(URGENCY_LABELS) as ReportUrgency[]).map((u) => (
-                        <option key={u} value={u}>
-                          {URGENCY_LABELS[u]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label htmlFor="triage-cat" className="block text-xs font-medium text-slate-700">
-                      Kategorisasi Terstruktur
-                    </label>
-                    <select
-                      id="triage-cat"
-                      value={nextCategory}
-                      onChange={(e) => {
-                        const c = e.target.value as ReportCategory;
-                        setNextCategory(c);
-                        setAgencyCode(CATEGORY_CATALOG[c].defaultAgency);
-                      }}
-                      className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    >
-                      {Object.values(CATEGORY_CATALOG).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.shortLabel}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="triage-agency" className="block text-xs font-medium text-slate-700">
-                      Instansi Terkait Tujuan
-                    </label>
-                    <select
-                      id="triage-agency"
-                      value={agencyCode}
-                      onChange={(e) => setAgencyCode(e.target.value as AgencyCode)}
-                      className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    >
-                      {(Object.keys(AGENCY_LABELS) as AgencyCode[]).map((code) => (
-                        <option key={code} value={code}>
-                          {AGENCY_LABELS[code]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    {(Object.keys(STATUS_LABELS) as ReportStatus[]).map((st) => (
+                      <option key={st} value={st}>
+                        {STATUS_LABELS[st]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="triage-note" className="block text-xs font-medium text-slate-700">
-                    Catatan Tindak Lanjut Petugas (Dikirim ke Notifikasi Push Warga)
+                  <label htmlFor="triage-urgency" className="block text-[11px] font-semibold text-[#263015]">
+                    Urgensi
                   </label>
-                  <textarea
-                    id="triage-note"
-                    rows={3}
-                    maxLength={VALIDATION_LIMITS.ADMIN_NOTE_MAX}
-                    value={adminNote}
-                    onChange={(e) => setAdminNote(e.target.value)}
-                    placeholder="Contoh: Petugas Jumantik & Puskesmas dijadwalkan turun ke lokasi pukul 09.00 WIB..."
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
+                  <select
+                    id="triage-urgency"
+                    value={nextUrgency}
+                    onChange={(e) => setNextUrgency(e.target.value as ReportUrgency)}
+                    className="w-full min-h-[42px] px-2.5 py-1.5 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+                  >
+                    {(Object.keys(URGENCY_LABELS) as ReportUrgency[]).map((u) => (
+                      <option key={u} value={u}>
+                        {URGENCY_LABELS[u]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="space-y-1">
+                  <label htmlFor="triage-cat" className="block text-[11px] font-semibold text-[#263015]">
+                    Kategori Layanan
+                  </label>
+                  <select
+                    id="triage-cat"
+                    value={nextCategory}
+                    onChange={(e) => {
+                      const c = e.target.value as ReportCategory;
+                      setNextCategory(c);
+                      setAgencyCode(CATEGORY_CATALOG[c].defaultAgency);
+                    }}
+                    className="w-full min-h-[42px] px-2.5 py-1.5 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+                  >
+                    {Object.values(CATEGORY_CATALOG).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendAgencyApiDispatch}
-                    onChange={(e) => setSendAgencyApiDispatch(e.target.checked)}
-                    className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                  />
-                  <span>Teruskan juga payload tiket ke Gateway API Instansi Terkait</span>
-                </label>
+                <div className="space-y-1">
+                  <label htmlFor="triage-agency" className="block text-[11px] font-semibold text-[#263015]">
+                    Instansi Tujuan
+                  </label>
+                  <select
+                    id="triage-agency"
+                    value={agencyCode}
+                    onChange={(e) => setAgencyCode(e.target.value as AgencyCode)}
+                    className="w-full min-h-[42px] px-2.5 py-1.5 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+                  >
+                    {(Object.keys(AGENCY_LABELS) as AgencyCode[]).map((code) => (
+                      <option key={code} value={code}>
+                        {AGENCY_LABELS[code]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={savingTriage}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {savingTriage ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Memproses Pembaruan & Push...</span>
-                    </>
-                  ) : (
-                    <>
-                      <BellRing className="w-3.5 h-3.5" />
-                      <span>Simpan Status & Kirim Notifikasi Push</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+              <div className="space-y-1">
+                <label htmlFor="triage-note" className="block text-[11px] font-semibold text-[#263015]">
+                  Catatan Petugas (Dikirim ke Notifikasi Push Warga)
+                </label>
+                <textarea
+                  id="triage-note"
+                  rows={3}
+                  maxLength={VALIDATION_LIMITS.ADMIN_NOTE_MAX}
+                  value={adminNote}
+                  onChange={(e) => setAdminNote(e.target.value)}
+                  placeholder="Contoh: Petugas Puskesmas & pengurus RW dijadwalkan turun pukul 09.00 WIB..."
+                  className="w-full px-3 py-2 text-xs bg-white border border-[#cbe0b0] rounded-xl text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-[#263015] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendAgencyApiDispatch}
+                  onChange={(e) => setSendAgencyApiDispatch(e.target.checked)}
+                  className="rounded border-[#cbe0b0] text-[#586826] focus:ring-[#586826]"
+                />
+                <span>Teruskan juga tiket ke Gateway API Instansi</span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={savingTriage}
+                className="w-full min-h-[46px] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {savingTriage ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Memproses & Mengirim Push...</span>
+                  </>
+                ) : (
+                  <>
+                    <BellRing className="w-4 h-4" />
+                    <span>Simpan Status & Kirim Push</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </>
+        )}
       </div>
 
-      {/* Optional Officer Delegation for Bootstrapped Admin */}
+      {/* Officer Delegation for Bootstrapped Admin */}
       {isBootstrappedAdmin && (
-        <section className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <section className="bg-white border border-[#cbe0b0] rounded-3xl p-4 space-y-3">
           <div className="space-y-0.5">
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-slate-700" />
+            <h2 className="text-xs font-bold text-[#263015] flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-[#586826]" />
               <span>Delegasi Petugas Admin Wilayah</span>
             </h2>
-            <p className="text-xs text-slate-500">
-              Tambahkan UID warga/pengurus RW terdaftar agar memiliki hak verifikasi laporan pada koleksi RBAC.
+            <p className="text-[11px] text-[#5b6649]">
+              Tambahkan UID warga/pengurus RW agar dapat memverifikasi laporan.
             </p>
             {grantFeedback && (
-              <p className="text-xs font-medium text-emerald-700 pt-1">{grantFeedback}</p>
+              <p className="text-xs font-semibold text-[#586826] pt-1">{grantFeedback}</p>
             )}
           </div>
-          <form onSubmit={handleGrantOfficer} className="flex items-center gap-2 shrink-0">
+          <form onSubmit={handleGrantOfficer} className="flex items-center gap-2">
             <input
               type="text"
               value={newOfficerUid}
               onChange={(e) => setNewOfficerUid(e.target.value)}
               placeholder="Masukkan UID Pengguna"
-              className="px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="flex-1 min-h-[42px] px-3.5 py-2 text-xs font-mono bg-[#f7f9f4] border border-[#cbe0b0] rounded-full text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap cursor-pointer"
+              className="min-h-[42px] inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] whitespace-nowrap cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Beri Akses</span>

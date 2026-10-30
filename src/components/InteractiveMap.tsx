@@ -18,12 +18,12 @@ import {
 import { formatTimestamp, type SpatialHotspot } from '../utils/geoAndImage';
 
 function createPinIcon(hexColor: string, isUrgent = false): L.DivIcon {
-  const ring = isUrgent ? '#991b1b' : '#ffffff';
+  const ring = isUrgent ? '#991b1b' : '#f7f9f4';
   const size = isUrgent ? 30 : 26;
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 28 36" fill="none">
       <path d="M14 1C7.37258 1 2 6.37258 2 13C2 21.5 14 34.5 14 34.5C14 34.5 26 21.5 26 13C26 6.37258 20.6274 1 14 1Z" fill="${hexColor}" stroke="${ring}" stroke-width="2.2"/>
-      <circle cx="14" cy="13" r="4.5" fill="#ffffff"/>
+      <circle cx="14" cy="13" r="4.5" fill="#f7f9f4"/>
     </svg>
   `;
   return L.divIcon({
@@ -35,12 +35,16 @@ function createPinIcon(hexColor: string, isUrgent = false): L.DivIcon {
   });
 }
 
-const PICKER_ICON = createPinIcon('#0f172a', false);
+const PICKER_ICON = createPinIcon('#586826', false);
 
 function MapViewportUpdater({ center, zoom }: { center: [number, number]; zoom?: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom ?? map.getZoom(), { animate: true });
+    const timer = window.setTimeout(() => {
+      map.invalidateSize();
+      map.setView(center, zoom ?? map.getZoom(), { animate: true });
+    }, 90);
+    return () => window.clearTimeout(timer);
   }, [center[0], center[1], zoom, map]);
   return null;
 }
@@ -72,7 +76,7 @@ interface InteractiveMapProps {
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   center,
   zoom = 15,
-  heightClass = 'h-96',
+  heightClass = 'h-64',
   mode = 'explorer',
   selectedPin,
   onSelectLocation,
@@ -92,7 +96,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   }, []);
 
   return (
-    <div className={`w-full ${heightClass} rounded-lg overflow-hidden border border-slate-200 relative bg-slate-100`}>
+    <div
+      className={`w-full ${heightClass} rounded-2xl overflow-hidden border border-[#cbe0b0] relative bg-[#e6f2d3]`}
+    >
       <MapContainer
         center={[center.lat, center.lng]}
         zoom={zoom}
@@ -113,9 +119,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {mode === 'picker' && selectedPin && (
           <Marker position={[selectedPin.lat, selectedPin.lng]} icon={PICKER_ICON}>
             <Popup>
-              <div className="text-xs space-y-1">
-                <p className="font-semibold text-slate-900">Titik Lokasi Kejadian</p>
-                <p className="font-mono text-slate-600">
+              <div className="text-xs space-y-1 text-[#263015]">
+                <p className="font-semibold">Titik Lokasi Kejadian</p>
+                <p className="font-mono text-[#5b6649]">
                   {selectedPin.lat.toFixed(5)}, {selectedPin.lng.toFixed(5)}
                 </p>
               </div>
@@ -132,7 +138,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                   ? '#dc2626'
                   : h.riskLevel === 'waspada'
                   ? '#d97706'
-                  : '#16a34a';
+                  : '#586826';
               const radiusMeters = Math.min(280, Math.max(85, 70 + h.riskScore * 5));
               return (
                 <Circle
@@ -142,25 +148,25 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                   pathOptions={{
                     color: strokeColor,
                     fillColor: strokeColor,
-                    fillOpacity: h.riskLevel === 'tinggi' ? 0.24 : 0.14,
-                    weight: 1.5,
+                    fillOpacity: h.riskLevel === 'tinggi' ? 0.24 : 0.16,
+                    weight: 1.6,
                   }}
                 >
                   <Popup>
-                    <div className="text-xs space-y-1 min-w-44">
-                      <p className="font-semibold text-slate-900">
+                    <div className="text-xs space-y-1 min-w-44 text-[#263015]">
+                      <p className="font-semibold">
                         Zona Pemantauan {h.rt} · RW 013
                       </p>
-                      <p className="text-slate-600">
+                      <p className="text-[#5b6649]">
                         Tingkat Risiko:{' '}
                         <span className="font-semibold uppercase">{h.riskLevel}</span> (Skor{' '}
                         <span className="font-mono">{h.riskScore}</span>)
                       </p>
-                      <p className="text-slate-600 font-mono">
+                      <p className="text-[#5b6649] font-mono">
                         Laporan: {h.reportCount} · Aktif: {h.unresolvedCount}
                       </p>
                       {h.abjPercent !== null && (
-                        <p className="text-slate-600 font-mono">
+                        <p className="text-[#5b6649] font-mono">
                           ABJ Jentik: {h.abjPercent}%
                         </p>
                       )}
@@ -184,28 +190,28 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 icon={icon}
               >
                 <Popup>
-                  <div className="w-56 space-y-2 text-xs">
+                  <div className="w-52 space-y-2 text-xs text-[#263015]">
                     {rep.photoDataUrl ? (
                       <img
                         src={rep.photoDataUrl}
                         alt={rep.title}
                         referrerPolicy="no-referrer"
-                        className="w-full h-28 object-cover rounded border border-slate-200"
+                        className="w-full h-24 object-cover rounded-lg border border-[#cbe0b0]"
                       />
                     ) : null}
                     <div>
-                      <p className="font-semibold text-slate-900 leading-snug">{rep.title}</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="font-semibold leading-snug">{rep.title}</p>
+                      <p className="text-[11px] text-[#5b6649] mt-0.5">
                         {catMeta?.shortLabel || rep.category} · {rep.rt} ·{' '}
                         {URGENCY_LABELS[rep.urgency]}
                       </p>
                     </div>
-                    <p className="text-slate-600 line-clamp-2">{rep.description}</p>
-                    <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-medium text-slate-700">
+                    <p className="text-[#5b6649] line-clamp-2">{rep.description}</p>
+                    <div className="pt-1 border-t border-[#e6f2d3] flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-[#586826]">
                         {STATUS_LABELS[rep.status]}
                       </span>
-                      <span className="text-[11px] font-mono text-slate-400">
+                      <span className="text-[11px] font-mono text-[#5b6649]">
                         {formatTimestamp(rep.createdAt)}
                       </span>
                     </div>
@@ -213,7 +219,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                       <button
                         type="button"
                         onClick={() => onSelectReport(rep)}
-                        className="w-full mt-1 px-2.5 py-1.5 text-xs font-medium text-white bg-slate-900 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                        className="w-full mt-1 px-3 py-2 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] transition-colors cursor-pointer"
                       >
                         Lihat Detail Laporan
                       </button>

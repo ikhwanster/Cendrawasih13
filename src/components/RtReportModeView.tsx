@@ -3,6 +3,8 @@ import {
   Camera,
   CheckCircle2,
   Download,
+  Home,
+  Image as ImageIcon,
   MapPin,
   Plus,
   Search,
@@ -42,6 +44,7 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
   const [selectedRt, setSelectedRt] = useState<RtUnit>(
     RT_UNITS.includes(initialRt) ? initialRt : 'RT 001'
   );
+  const [catalogFilter, setCatalogFilter] = useState<'ALL' | 'RAWAN' | 'AMAN' | 'MATRIX'>('ALL');
   const [statusScope, setStatusScope] = useState<'ALL' | 'ACTIVE' | 'DONE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -54,7 +57,7 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
   const tenRtSummary = useMemo(() => {
     const categories = Object.keys(CATEGORY_CATALOG) as ReportCategory[];
 
-    return RT_UNITS.map((rt) => {
+    return RT_UNITS.map((rt, idx) => {
       const rtReports = reports.filter((r) => r.rt === rt);
       const rtLogs = jumantikLogs.filter((l) => l.rt === rt);
       const hotspot = hotspots.find((h) => h.rt === rt);
@@ -88,6 +91,7 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
 
       return {
         rt,
+        shortNum: String(idx + 1).padStart(2, '0'),
         total: rtReports.length,
         active,
         completed,
@@ -101,6 +105,16 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
       };
     });
   }, [reports, jumantikLogs, hotspots]);
+
+  const visibleGridRts = useMemo(() => {
+    if (catalogFilter === 'RAWAN') {
+      return tenRtSummary.filter((s) => s.riskLevel !== 'terkendali' || s.active > 0);
+    }
+    if (catalogFilter === 'AMAN') {
+      return tenRtSummary.filter((s) => s.riskLevel === 'terkendali' && s.active === 0);
+    }
+    return tenRtSummary;
+  }, [tenRtSummary, catalogFilter]);
 
   const activeRtSummary = useMemo(
     () => tenRtSummary.find((s) => s.rt === selectedRt) || tenRtSummary[0],
@@ -236,402 +250,390 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
       : 0;
 
   return (
-    <div className="space-y-8">
-      {/* Header & Primary Actions */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Mode Laporan Per RT (10 Wilayah RT)
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Pemantauan terfokus untuk masing-masing RT (RT 001 s/d RT 010) di lingkungan RW 013 beserta matriks perbandingan antar-RT.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+    <div className="space-y-5">
+      {/* Top Search & Catalog Filter Tabs (Reference Screen 10 Motif) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-lg font-bold text-[#263015] tracking-tight">
+              Katalog 10 Wilayah RT
+            </h1>
+            <p className="text-xs text-[#5b6649]">
+              Pilih kartu kotak RT (RT 001 – RT 010) untuk memantau laporan warga
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => downloadCsvRecap('all10')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#586826] bg-[#e6f2d3] border border-[#cbe0b0] rounded-full hover:bg-[#dcecc3] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Unduh Matriks 10 RT (CSV)</span>
+            <span>CSV 10 RT</span>
           </button>
+        </div>
 
-          <button
-            type="button"
-            onClick={() => onCreateReportForRt(selectedRt)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Buat Laporan {selectedRt}</span>
-          </button>
+        {/* Horizontal Filter Bar like Reference Screen 10 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {(
+            [
+              { id: 'ALL', label: 'Semua 10 RT' },
+              { id: 'RAWAN', label: 'Ada Aktif / Waspada' },
+              { id: 'AMAN', label: 'Terkendali' },
+              { id: 'MATRIX', label: 'Tabel Matriks' },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setCatalogFilter(f.id)}
+              className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                catalogFilter === f.id
+                  ? 'bg-[#a5cf4c] text-[#263015]'
+                  : 'bg-white border border-[#cbe0b0] text-[#5b6649] hover:text-[#263015]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* 10-RT Interactive Selector Grid (2x5 Mobile, 5x2 Desktop) */}
-      <section aria-label="Pemilih 10 Wilayah RT" className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span className="font-semibold text-slate-700">
-            Pilih Wilayah RT (RT 001 – RT 010)
-          </span>
-          <span className="font-mono">Total 10 RT · RW 013</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {tenRtSummary.map((item) => {
+      {/* 3-Column Square Olive Grid Catalog (Reference Screen 10) */}
+      {catalogFilter !== 'MATRIX' && (
+        <section aria-label="Grid Katalog 10 RT" className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+          {visibleGridRts.map((item) => {
             const isSelected = item.rt === selectedRt;
             return (
               <button
                 key={item.rt}
                 type="button"
                 onClick={() => setSelectedRt(item.rt)}
-                className={`text-left p-3.5 rounded-xl border transition-colors cursor-pointer space-y-2 ${
+                className={`text-left p-2 rounded-2xl border transition-all active:scale-[0.98] cursor-pointer flex flex-col space-y-2 ${
                   isSelected
-                    ? 'bg-slate-900 border-slate-900 text-white'
-                    : 'bg-white border-slate-200 text-slate-900 hover:border-slate-400'
+                    ? 'bg-[#dcecc3] border-[#586826] ring-2 ring-[#586826]/30'
+                    : 'bg-white border-[#cbe0b0] hover:bg-[#e6f2d3]/50'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold font-mono tracking-tight">
-                    {item.rt}
-                  </span>
-                  <span
-                    className={`text-[11px] font-medium ${
-                      isSelected
-                        ? 'text-slate-300'
-                        : item.riskLevel === 'tinggi'
-                        ? 'text-red-700 font-semibold'
-                        : item.riskLevel === 'waspada'
-                        ? 'text-amber-700'
-                        : 'text-emerald-700'
-                    }`}
-                  >
-                    {item.riskLevel === 'tinggi'
-                      ? 'Rawan'
-                      : item.riskLevel === 'waspada'
-                      ? 'Waspada'
-                      : 'Terkendali'}
-                  </span>
-                </div>
-
+                {/* Signature Square Olive Block */}
                 <div
-                  className={`text-xs font-mono tabular-nums ${
-                    isSelected ? 'text-slate-200' : 'text-slate-600'
-                  }`}
-                >
-                  <span>{item.total} laporan</span>
-                  <span aria-hidden="true"> · </span>
-                  <span>{item.active} aktif</span>
-                </div>
-
-                <div
-                  className={`text-[11px] font-mono tabular-nums pt-1 border-t ${
+                  className={`w-full aspect-square rounded-xl flex flex-col items-center justify-center relative ${
                     isSelected
-                      ? 'border-slate-800 text-slate-300'
-                      : 'border-slate-100 text-slate-500'
+                      ? 'bg-[#586826] text-[#a5cf4c]'
+                      : 'bg-[#586826] text-[#dcecc3]'
                   }`}
                 >
-                  ABJ: {item.abjPercent === null ? '–' : `${item.abjPercent}%`}
+                  <div className="w-8 h-8 rounded-lg border-[1.8px] border-current flex items-center justify-center mb-1">
+                    <Home className="w-4 h-4" />
+                  </div>
+                  <span className="font-mono text-xs font-bold tracking-tight">
+                    RT {item.shortNum}
+                  </span>
+                </div>
+
+                {/* Stacked Clean Metadata Lines underneath the Square */}
+                <div className="px-0.5 space-y-0.5">
+                  <p className="text-xs font-bold text-[#263015] font-mono truncate">
+                    {item.rt}
+                  </p>
+                  <p className="text-[11px] font-mono tabular-nums text-[#5b6649] truncate">
+                    {item.total} lap · {item.active} aktif
+                  </p>
+                  <div className="pt-1 flex items-center justify-between gap-1 text-[10px] font-mono">
+                    <span className="text-[#586826] font-semibold">
+                      ABJ {item.abjPercent === null ? '–' : `${item.abjPercent}%`}
+                    </span>
+                    <span
+                      className={
+                        item.riskLevel === 'tinggi'
+                          ? 'text-red-700 font-bold'
+                          : item.riskLevel === 'waspada'
+                          ? 'text-amber-700 font-semibold'
+                          : 'text-[#586826]'
+                      }
+                    >
+                      {item.riskLevel === 'tinggi'
+                        ? 'Rawan'
+                        : item.riskLevel === 'waspada'
+                        ? 'Waspada'
+                        : 'Aman'}
+                    </span>
+                  </div>
                 </div>
               </button>
             );
           })}
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Selected RT KPI Strip */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <p className="text-xs text-slate-500">Total Laporan {selectedRt}</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-slate-900">
-            {activeRtSummary.total}
-          </p>
-          <p className="text-xs text-slate-500 font-mono">
-            {activeRtSummary.urgent} urgensi tinggi/darurat
-          </p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <p className="text-xs text-slate-500">Laporan Aktif {selectedRt}</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-amber-700">
-            {activeRtSummary.active}
-          </p>
-          <p className="text-xs text-slate-500">Menunggu / sedang diproses</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <p className="text-xs text-slate-500">Selesai Ditangani</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-emerald-700">
-            {activeRtSummary.completed}
-          </p>
-          <p className="text-xs text-slate-500 font-mono">
-            Tingkat penyelesaian {completionPct}%
-          </p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-          <p className="text-xs text-slate-500">Capaian ABJ {selectedRt}</p>
-          <p
-            className={`text-3xl font-bold font-mono tabular-nums ${
-              activeRtSummary.abjPercent === null
-                ? 'text-slate-900'
-                : activeRtSummary.abjPercent >= 95
-                ? 'text-emerald-700'
-                : 'text-red-700'
-            }`}
-          >
-            {activeRtSummary.abjPercent === null ? '–' : `${activeRtSummary.abjPercent}%`}
-          </p>
-          <p className="text-xs text-slate-500 font-mono">
-            {activeRtSummary.inspected} rumah · {activeRtSummary.positive} jentik
-          </p>
-        </div>
-      </section>
-
-      {/* Focused RT Workspace: Map + Category Breakdown (Left) & Filtered Reports Feed (Right) */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">
-                  Peta Sebaran Kejadian {selectedRt}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Titik koordinat laporan warga khusus wilayah {selectedRt}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => downloadCsvRecap('selected')}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 hover:text-slate-900 underline underline-offset-2 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV {selectedRt}</span>
-              </button>
-            </div>
-
-            <InteractiveMap
-              center={selectedRtMapCenter}
-              zoom={16}
-              heightClass="h-72"
-              mode="explorer"
-              reports={selectedRtReports}
-              hotspots={activeRtSummary.hotspot ? [activeRtSummary.hotspot] : []}
-              showHotspots={true}
-              onSelectReport={onSelectReport}
-            />
+      {/* Focused Selected RT Workspace Card (Reference Screen 6 & 8 Fusion) */}
+      <section className="bg-[#dcecc3] border border-[#cbe0b0] rounded-3xl p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-medium text-[#5b6649]">
+              Fokus Wilayah Terpilih · RW 013
+            </p>
+            <h2 className="text-lg font-bold text-[#263015] font-mono">{selectedRt}</h2>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Komposisi Kategori Laporan {selectedRt}
-            </h3>
-            <div className="divide-y divide-slate-100 text-xs">
-              {Object.values(CATEGORY_CATALOG).map((cat) => {
-                const count = activeRtSummary.byCat[cat.id] || 0;
-                return (
-                  <div
-                    key={cat.id}
-                    className="py-2.5 flex items-center justify-between gap-3"
-                  >
-                    <span className="text-slate-700">{cat.label}</span>
-                    <span className="font-mono tabular-nums font-semibold text-slate-900">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => downloadCsvRecap('selected')}
+              className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#586826] bg-[#f7f9f4] border border-[#cbe0b0] rounded-full hover:bg-white cursor-pointer whitespace-nowrap"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onCreateReportForRt(selectedRt)}
+              className="min-h-[40px] inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Lapor {selectedRt}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2x2 Compact Olive & White Metric Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 space-y-0.5">
+            <p className="text-[11px] text-[#5b6649]">Total Laporan</p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#263015]">
+              {activeRtSummary.total}
+            </p>
+            <p className="text-[10px] font-mono text-[#5b6649]">
+              {activeRtSummary.urgent} darurat/tinggi
+            </p>
+          </div>
+
+          <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 space-y-0.5">
+            <p className="text-[11px] text-[#5b6649]">Sedang Aktif</p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-amber-800">
+              {activeRtSummary.active}
+            </p>
+            <p className="text-[10px] text-[#5b6649]">Menunggu / proses</p>
+          </div>
+
+          <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 space-y-0.5">
+            <p className="text-[11px] text-[#5b6649]">Selesai</p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#586826]">
+              {activeRtSummary.completed}
+            </p>
+            <p className="text-[10px] font-mono text-[#5b6649]">Tuntas {completionPct}%</p>
+          </div>
+
+          <div className="bg-[#586826] text-[#f7f9f4] rounded-2xl p-3 space-y-0.5">
+            <p className="text-[11px] text-[#dcecc3]">ABJ {selectedRt}</p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#a5cf4c]">
+              {activeRtSummary.abjPercent === null ? '–' : `${activeRtSummary.abjPercent}%`}
+            </p>
+            <p className="text-[10px] font-mono text-[#dcecc3]/90">
+              {activeRtSummary.inspected} rumah cek
+            </p>
+          </div>
+        </div>
+
+        {/* Interactive Geographic Map for Selected RT */}
+        <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3 space-y-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-[#263015]">
+              Peta Titik Laporan {selectedRt}
+            </span>
+            <span className="font-mono text-[11px] text-[#5b6649]">
+              {selectedRtReports.length} pin tampil
+            </span>
+          </div>
+          <InteractiveMap
+            center={selectedRtMapCenter}
+            zoom={16}
+            heightClass="h-52"
+            mode="explorer"
+            reports={selectedRtReports}
+            hotspots={activeRtSummary.hotspot ? [activeRtSummary.hotspot] : []}
+            showHotspots={true}
+            onSelectReport={onSelectReport}
+          />
+        </div>
+
+        {/* Category Progress Composition */}
+        <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-2xl p-3.5 space-y-2.5">
+          <h3 className="text-xs font-bold text-[#263015]">
+            Komposisi Sektor Laporan {selectedRt}
+          </h3>
+          <div className="space-y-2 text-xs">
+            {Object.values(CATEGORY_CATALOG).map((cat) => {
+              const count = activeRtSummary.byCat[cat.id] || 0;
+              const pct =
+                activeRtSummary.total > 0
+                  ? Math.round((count / activeRtSummary.total) * 100)
+                  : 0;
+              return (
+                <div key={cat.id} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[#263015] truncate">{cat.shortLabel}</span>
+                    <span className="font-mono tabular-nums text-[11px] text-[#5b6649] shrink-0">
                       {count} laporan
                     </span>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="w-full h-1.5 bg-[#e6f2d3] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#586826] rounded-full"
+                      style={{ width: `${count > 0 ? Math.max(8, pct) : 0}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Selected RT Horizontal Report Cards (Reference Screen 5 & 6 Motif) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-[#263015]">
+            Daftar Laporan {selectedRt} ({selectedRtReports.length})
+          </h3>
+          <div className="flex items-center gap-1 p-1 bg-[#e6f2d3] rounded-full">
+            {(
+              [
+                { id: 'ALL', label: 'Semua' },
+                { id: 'ACTIVE', label: 'Aktif' },
+                { id: 'DONE', label: 'Selesai' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setStatusScope(tab.id)}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-full transition-colors whitespace-nowrap cursor-pointer ${
+                  statusScope === tab.id
+                    ? 'bg-[#586826] text-[#f7f9f4]'
+                    : 'text-[#5b6649] hover:text-[#263015]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Right Column: Reports List for Selected RT */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="p-5 border-b border-slate-200 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">
-                  Daftar Laporan Warga {selectedRt} ({selectedRtReports.length})
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Klik laporan untuk melihat foto penuh, koordinat GPS, dan tanggapan instansi
-                </p>
-              </div>
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-[#5b6649] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={`Cari kejadian atau alamat di ${selectedRt}...`}
+            className="w-full min-h-[42px] pl-9 pr-3.5 py-2 text-xs bg-white border border-[#cbe0b0] rounded-full text-[#263015] placeholder:text-[#5b6649]/70 focus:outline-none focus:ring-2 focus:ring-[#586826]"
+          />
+        </div>
 
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit">
-                {(
-                  [
-                    { id: 'ALL', label: 'Semua' },
-                    { id: 'ACTIVE', label: 'Aktif' },
-                    { id: 'DONE', label: 'Selesai' },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setStatusScope(tab.id)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                      statusScope === tab.id
-                        ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Cari judul kejadian, alamat, atau nama pelapor di ${selectedRt}...`}
-                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-900"
-              />
-            </div>
+        {selectedRtReports.length === 0 ? (
+          <div className="bg-white border border-[#cbe0b0] rounded-3xl p-7 text-center space-y-3">
+            <p className="text-sm font-semibold text-[#263015]">
+              Belum ada laporan warga di {selectedRt}
+            </p>
+            <p className="text-xs text-[#5b6649]">
+              Kirimkan foto kejadian beserta titik lokasi GPS untuk wilayah {selectedRt}.
+            </p>
+            <button
+              type="button"
+              onClick={() => onCreateReportForRt(selectedRt)}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold text-[#f7f9f4] bg-[#586826] rounded-full hover:bg-[#48561e] cursor-pointer"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Kirim Laporan {selectedRt}</span>
+            </button>
           </div>
-
-          {selectedRtReports.length === 0 ? (
-            <div className="p-10 text-center space-y-3">
-              <p className="text-sm font-semibold text-slate-900">
-                Belum ada laporan tercatat untuk {selectedRt}
-              </p>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Kondisi wilayah {selectedRt} saat ini belum memiliki laporan pada filter yang dipilih. Warga atau pengurus RT dapat langsung mengirim laporan baru.
-              </p>
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => onCreateReportForRt(selectedRt)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 cursor-pointer"
+        ) : (
+          <div className="space-y-2.5">
+            {selectedRtReports.map((rep) => {
+              const catMeta = CATEGORY_CATALOG[rep.category];
+              return (
+                <article
+                  key={rep.id}
+                  onClick={() => onSelectReport(rep)}
+                  className="bg-[#e6f2d3] hover:bg-[#dcecc3] border border-[#cbe0b0] rounded-2xl p-3 transition-colors cursor-pointer flex items-center gap-3"
                 >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Kirim Laporan untuk {selectedRt}</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {selectedRtReports.map((rep) => {
-                const catMeta = CATEGORY_CATALOG[rep.category];
-                return (
-                  <article
-                    key={rep.id}
-                    onClick={() => onSelectReport(rep)}
-                    className="p-4 sm:p-5 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col sm:flex-row gap-4"
-                  >
+                  {/* Square Deep Olive Thumbnail on Left (Reference Screen 5/6) */}
+                  <div className="w-16 h-16 rounded-xl bg-[#586826] text-[#dcecc3] overflow-hidden shrink-0 flex items-center justify-center border border-[#48561e]">
                     {rep.photoDataUrl ? (
                       <img
                         src={rep.photoDataUrl}
                         alt={rep.title}
                         referrerPolicy="no-referrer"
-                        className="w-full sm:w-28 h-36 sm:h-24 object-cover rounded-lg border border-slate-200 shrink-0"
+                        className="w-full h-full object-cover"
                       />
-                    ) : null}
+                    ) : (
+                      <ImageIcon className="w-6 h-6" />
+                    )}
+                  </div>
 
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                        <span className="font-medium text-slate-800">
-                          {catMeta?.shortLabel || rep.category}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        <span
-                          className={
-                            rep.urgency === 'darurat'
-                              ? 'text-red-700 font-semibold'
-                              : rep.urgency === 'tinggi'
-                              ? 'text-amber-700 font-semibold'
-                              : 'text-slate-600'
-                          }
-                        >
-                          Urgensi {URGENCY_LABELS[rep.urgency]}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        <span>Oleh {rep.authorName}</span>
-                      </div>
-
-                      <h3 className="text-sm font-semibold text-slate-900 leading-snug">
-                        {rep.title}
-                      </h3>
-                      <p className="text-xs text-slate-600 line-clamp-2">{rep.description}</p>
-
-                      <div className="pt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <span className="inline-flex items-center gap-1 text-slate-500 truncate max-w-xs">
-                          <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                          <span className="truncate">{rep.address}</span>
-                        </span>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span
-                            className={`inline-flex items-center gap-1 font-semibold ${
-                              rep.status === 'selesai'
-                                ? 'text-emerald-700'
-                                : rep.status === 'menunggu'
-                                ? 'text-amber-700'
-                                : rep.status === 'ditolak'
-                                ? 'text-slate-400'
-                                : 'text-sky-700'
-                            }`}
-                          >
-                            {rep.status === 'selesai' && (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            )}
-                            {STATUS_LABELS[rep.status]}
-                          </span>
-                          <span aria-hidden="true" className="text-slate-300">
-                            ·
-                          </span>
-                          <span className="font-mono text-[11px] text-slate-400">
-                            {formatTimestamp(rep.createdAt)}
-                          </span>
-                        </div>
-                      </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#5b6649] truncate">
+                      <span className="font-semibold text-[#586826]">
+                        {catMeta?.shortLabel || rep.category}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>{URGENCY_LABELS[rep.urgency]}</span>
                     </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                    <h4 className="text-xs font-bold text-[#263015] truncate">{rep.title}</h4>
+
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-[#5b6649]">
+                      <span className="inline-flex items-center gap-1 truncate">
+                        <MapPin className="w-3 h-3 shrink-0 text-[#586826]" />
+                        <span className="truncate">{rep.address}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-[#263015] shrink-0">
+                        {rep.status === 'selesai' && (
+                          <CheckCircle2 className="w-3 h-3 text-[#586826]" />
+                        )}
+                        {STATUS_LABELS[rep.status]}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Comparative 10-RT Cross-Sector Matrix */}
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <section className="bg-white border border-[#cbe0b0] rounded-3xl overflow-hidden">
+        <div className="px-4 py-3.5 border-b border-[#cbe0b0] bg-[#e6f2d3]/60 flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
-              Tabel Perbandingan Lintas 10 RT (RT 001 – RT 010)
+            <h2 className="text-xs font-bold text-[#263015]">
+              Matriks Perbandingan 10 RT (RT 001 – RT 010)
             </h2>
-            <p className="text-xs text-slate-500">
-              Rekapitulasi lengkap seluruh kategori laporan warga dan surveilans jentik di 10 RT lingkungan RW 013
+            <p className="text-[11px] text-[#5b6649]">
+              Geser ke samping untuk rincian kategori tiap RT
             </p>
           </div>
-          <span className="text-xs text-slate-500">Klik baris RT untuk beralih fokus</span>
+          <span className="text-[11px] font-mono text-[#586826] shrink-0">RW 013</span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto phone-scroll">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                <th className="py-3 px-4 font-semibold">RT</th>
-                <th className="py-3 px-3 font-semibold text-right">Kesehatan</th>
-                <th className="py-3 px-3 font-semibold text-right">Drainase</th>
-                <th className="py-3 px-3 font-semibold text-right">Infrastruktur</th>
-                <th className="py-3 px-3 font-semibold text-right">Kebersihan</th>
-                <th className="py-3 px-3 font-semibold text-right">Keamanan</th>
-                <th className="py-3 px-3 font-semibold text-right">PJU/Fasum</th>
-                <th className="py-3 px-3 font-semibold text-right">Total</th>
-                <th className="py-3 px-3 font-semibold text-right">Aktif</th>
-                <th className="py-3 px-3 font-semibold text-right">Selesai</th>
-                <th className="py-3 px-4 font-semibold text-right">ABJ (%)</th>
+              <tr className="border-b border-[#cbe0b0] bg-[#f7f9f4] text-[#5b6649]">
+                <th className="py-2.5 px-3 font-semibold">RT</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Total</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Aktif</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Selesai</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">ABJ</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Jentik</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Banjir</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Jalan</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Sampah</th>
+                <th className="py-2.5 px-2.5 font-semibold text-right">Aman</th>
+                <th className="py-2.5 px-3 font-semibold text-right">PJU</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#e6f2d3]">
               {tenRtSummary.map((row) => {
                 const isSelected = row.rt === selectedRt;
                 return (
@@ -639,86 +641,78 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
                     key={row.rt}
                     onClick={() => setSelectedRt(row.rt)}
                     className={`cursor-pointer transition-colors ${
-                      isSelected ? 'bg-slate-100 font-medium' : 'hover:bg-slate-50/80'
+                      isSelected ? 'bg-[#dcecc3] font-semibold' : 'hover:bg-[#f7f9f4]'
                     }`}
                   >
-                    <td className="py-2.5 px-4 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                    <td className="py-2.5 px-3 font-mono font-bold text-[#263015] whitespace-nowrap">
                       {row.rt}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700">
-                      {row.byCat.kesehatan_jentik}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700">
-                      {row.byCat.drainase_banjir}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700">
-                      {row.byCat.infrastruktur}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700">
-                      {row.byCat.kebersihan}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700">
-                      {row.byCat.keamanan}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700">
-                      {row.byCat.fasilitas_umum}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums font-semibold text-slate-900">
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums font-semibold text-[#263015]">
                       {row.total}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-amber-700">
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-amber-800">
                       {row.active}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-emerald-700">
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#586826]">
                       {row.completed}
                     </td>
-                    <td
-                      className={`py-2.5 px-4 text-right font-mono tabular-nums font-semibold ${
-                        row.abjPercent === null
-                          ? 'text-slate-400'
-                          : row.abjPercent >= 95
-                          ? 'text-emerald-700'
-                          : 'text-red-700'
-                      }`}
-                    >
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums font-semibold text-[#263015]">
                       {row.abjPercent === null ? '–' : `${row.abjPercent}%`}
+                    </td>
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
+                      {row.byCat.kesehatan_jentik}
+                    </td>
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
+                      {row.byCat.drainase_banjir}
+                    </td>
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
+                      {row.byCat.infrastruktur}
+                    </td>
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
+                      {row.byCat.kebersihan}
+                    </td>
+                    <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#5b6649]">
+                      {row.byCat.keamanan}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[#5b6649]">
+                      {row.byCat.fasilitas_umum}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-900">
-                <td className="py-3 px-4 font-mono">TOTAL 10 RT</td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
-                  {tenRtSummary.reduce((s, r) => s + r.byCat.kesehatan_jentik, 0)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
-                  {tenRtSummary.reduce((s, r) => s + r.byCat.drainase_banjir, 0)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
-                  {tenRtSummary.reduce((s, r) => s + r.byCat.infrastruktur, 0)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
-                  {tenRtSummary.reduce((s, r) => s + r.byCat.kebersihan, 0)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
-                  {tenRtSummary.reduce((s, r) => s + r.byCat.keamanan, 0)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
-                  {tenRtSummary.reduce((s, r) => s + r.byCat.fasilitas_umum, 0)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums">
+              <tr className="border-t-2 border-[#cbe0b0] bg-[#e6f2d3] font-bold text-[#263015]">
+                <td className="py-2.5 px-3 font-mono">TOTAL</td>
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums">
                   {tenRtSummary.reduce((s, r) => s + r.total, 0)}
                 </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums text-amber-700">
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-amber-800">
                   {tenRtSummary.reduce((s, r) => s + r.active, 0)}
                 </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums text-emerald-700">
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums text-[#586826]">
                   {tenRtSummary.reduce((s, r) => s + r.completed, 0)}
                 </td>
-                <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-500">
-                  RW 013
+                <td className="py-2.5 px-2.5 text-right font-mono text-[11px] text-[#586826]">
+                  RW013
+                </td>
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums">
+                  {tenRtSummary.reduce((s, r) => s + r.byCat.kesehatan_jentik, 0)}
+                </td>
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums">
+                  {tenRtSummary.reduce((s, r) => s + r.byCat.drainase_banjir, 0)}
+                </td>
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums">
+                  {tenRtSummary.reduce((s, r) => s + r.byCat.infrastruktur, 0)}
+                </td>
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums">
+                  {tenRtSummary.reduce((s, r) => s + r.byCat.kebersihan, 0)}
+                </td>
+                <td className="py-2.5 px-2.5 text-right font-mono tabular-nums">
+                  {tenRtSummary.reduce((s, r) => s + r.byCat.keamanan, 0)}
+                </td>
+                <td className="py-2.5 px-3 text-right font-mono tabular-nums">
+                  {tenRtSummary.reduce((s, r) => s + r.byCat.fasilitas_umum, 0)}
                 </td>
               </tr>
             </tfoot>

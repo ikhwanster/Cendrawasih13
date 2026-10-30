@@ -5,14 +5,28 @@
   :root {
     --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Matcha, Soft Sage, Warm Off-White & Deep Olive Design System */
+    --bg-studio-outer: #e2e8da;
+    --bg-canvas-white: #f7f9f4;
+    --bg-canvas-sage: #dcecc3;
+    --bg-splash-matcha: #a5cf4c;
+    --surface-card: #ffffff;
+    --surface-sage-soft: #e6f2d3;
+    --border-sage: #cbe0b0;
+    --primary-olive: #586826;
+    --primary-olive-hover: #48561e;
+    --text-ink: #263015;
+    --text-muted: #5b6649;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: var(--bg-studio-outer);
+    color: var(--text-ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    margin: 0;
   }
 
   code,
@@ -27,4 +41,28 @@
 .leaflet-container {
   font-family: var(--font-sans);
   z-index: 10;
+}
+
+/* Subtle scrollbar inside the mobile app frame */
+.phone-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.phone-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.phone-scroll::-webkit-scrollbar-thumb {
+  background: rgba(88, 104, 38, 0.22);
+  border-radius: 9999px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
