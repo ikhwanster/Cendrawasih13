@@ -357,9 +357,9 @@ export const JumantikModule: React.FC<JumantikModuleProps> = ({
       <div className="grid grid-cols-3 gap-1 p-1 bg-[#e6f2d3] border border-[#cbe0b0] rounded-full">
         {(
           [
-            { id: 'form', label: 'Input Jentik' },
-            { id: 'recap', label: 'Rekap RT/Mgg' },
-            { id: 'history', label: `Riwayat (${logs.length})` },
+            { id: 'form', label: 'Input' },
+            { id: 'recap', label: 'Rekap' },
+            { id: 'history', label: 'Riwayat' },
           ] as const
         ).map((tab) => (
           <button

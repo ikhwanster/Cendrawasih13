@@ -24,7 +24,6 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
-  ClipboardList,
   CloudRain,
   Construction,
   Droplets,
@@ -40,11 +39,9 @@ import {
   Map as MapIcon,
   MapPin,
   Maximize2,
-  Menu,
   Minimize2,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -99,13 +96,13 @@ type NavTab =
   | 'api_gateway';
 
 const TAB_LABELS: Record<NavTab, string> = {
-  overview: 'SiagaWarga RW 013',
-  per_rt: 'Mode 10 Wilayah RT',
-  create_report: 'Kirim Laporan Warga',
-  jumantik: 'Bebas Jentik (ABJ)',
-  analytics: 'Analisis Area Rawan',
-  admin: 'Dashboard Admin',
-  api_gateway: 'Gateway API Instansi',
+  overview: 'SiagaWarga',
+  per_rt: 'Data RT',
+  create_report: 'Lapor',
+  jumantik: 'Jentik',
+  analytics: 'Tren',
+  admin: 'Admin',
+  api_gateway: 'API',
 };
 
 const CATEGORY_CIRCLE_ICONS: Array<{
@@ -172,7 +169,7 @@ export default function App() {
   // Overview Hero Carousel, Map & Filter States
   const [heroSlide, setHeroSlide] = useState<number>(0);
   const [showOverviewMap, setShowOverviewMap] = useState<boolean>(true);
-  const [feedScope, setFeedScope] = useState<'all' | 'per_rt' | 'mine'>('all');
+  const [feedScope, setFeedScope] = useState<'all' | 'mine'>('all');
   const [overviewSelectedRt, setOverviewSelectedRt] = useState<RtUnit>('RT 001');
   const [feedCategory, setFeedCategory] = useState<'ALL' | ReportCategory>('ALL');
   const [activeReportModal, setActiveReportModal] = useState<CitizenReport | null>(null);
@@ -420,11 +417,10 @@ export default function App() {
   const overviewReports = useMemo(() => {
     return allVisibleReports.filter((r) => {
       if (feedScope === 'mine' && r.authorId !== authUser?.uid) return false;
-      if (feedScope === 'per_rt' && r.rt !== overviewSelectedRt) return false;
       if (feedCategory !== 'ALL' && r.category !== feedCategory) return false;
       return true;
     });
-  }, [allVisibleReports, feedScope, overviewSelectedRt, feedCategory, authUser?.uid]);
+  }, [allVisibleReports, feedScope, feedCategory, authUser?.uid]);
 
   const hotspots = useMemo(
     () => computeRtVulnerability(allVisibleReports, jumantikLogs),
@@ -494,8 +490,8 @@ export default function App() {
   // Loading Screen inside Centered Phone Frame
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#e2e8da] flex items-center justify-center sm:p-6">
-        <div className="w-full max-w-[420px] min-h-screen sm:min-h-[820px] bg-[#a5cf4c] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl flex flex-col items-center justify-center p-8 text-center space-y-4">
+      <div className="h-dvh overflow-hidden bg-[#e2e8da] flex items-center justify-center sm:p-4">
+        <div className="w-full max-w-[420px] h-full sm:max-h-[856px] bg-[#a5cf4c] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl flex flex-col items-center justify-center p-8 text-center space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-[#586826] text-[#dcecc3] flex items-center justify-center">
             <Loader2 className="w-7 h-7 animate-spin" />
           </div>
@@ -509,9 +505,9 @@ export default function App() {
   // Unauthenticated Flow: Reference Screen 1 (Matcha Splash) -> Reference Screen 2 (Clean Off-White Sign-In)
   if (!authUser || !userProfile) {
     return (
-      <div className="min-h-screen bg-[#e2e8da] flex flex-col items-center justify-center sm:p-6">
+      <div className="h-dvh overflow-hidden bg-[#e2e8da] flex flex-col items-center justify-center sm:p-4">
         <div
-          className={`w-full max-w-[420px] min-h-screen sm:min-h-[830px] sm:max-h-[880px] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl overflow-hidden flex flex-col justify-between transition-colors duration-200 ${
+          className={`w-full max-w-[420px] h-full sm:max-h-[856px] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl overflow-y-auto phone-scroll flex flex-col justify-between transition-colors duration-200 ${
             welcomeStep === 'splash' ? 'bg-[#a5cf4c]' : 'bg-[#f7f9f4]'
           }`}
         >
@@ -731,67 +727,42 @@ export default function App() {
 
   const currentHero = heroCarouselSlides[heroSlide] || heroCarouselSlides[0];
 
-  const drawerModules: Array<{
+  const extraModules: Array<{
     id: NavTab;
     label: string;
-    desc: string;
     icon: React.ReactNode;
     badge?: string;
   }> = [
     {
-      id: 'overview',
-      label: 'Beranda & Peta Kejadian',
-      desc: 'Sorotan real-time, filter kategori bulat, & peta GPS',
-      icon: <Home className="w-4 h-4" />,
-    },
-    {
-      id: 'per_rt',
-      label: 'Katalog Mode 10 RT (RT 001–010)',
-      desc: 'Grid kotak 10 RT, unduh CSV, & matriks perbandingan',
-      icon: <Grid2x2 className="w-4 h-4" />,
-    },
-    {
-      id: 'create_report',
-      label: 'Kirim Laporan Foto & GPS',
-      desc: 'Kamera langsung kotak 1:1 & deteksi alamat otomatis',
-      icon: <Camera className="w-4 h-4" />,
-    },
-    {
-      id: 'jumantik',
-      label: 'Kampung Bebas Jentik (ABJ)',
-      desc: 'Input pemeriksaan rumah kader Jumantik & rekap mingguan',
-      icon: <ClipboardList className="w-4 h-4" />,
-    },
-    {
       id: 'analytics',
-      label: 'Analisis Tren & Area Rawan',
-      desc: 'Peta radius kerawanan, tren 14 hari, & jam rawan',
-      icon: <BarChart3 className="w-4 h-4" />,
+      label: 'Tren',
+      icon: <BarChart3 className="w-5 h-5" />,
     },
     ...(isAdmin
       ? [
           {
             id: 'admin' as NavTab,
-            label: 'Dashboard Admin & Triase',
-            desc: 'Verifikasi laporan, kirim notifikasi push, & delegasi',
-            icon: <ShieldCheck className="w-4 h-4" />,
-            badge: openReportCount > 0 ? `${openReportCount} aktif` : undefined,
+            label: 'Admin',
+            icon: <ShieldCheck className="w-5 h-5" />,
+            badge: openReportCount > 0 ? String(openReportCount) : undefined,
           },
         ]
       : []),
     {
       id: 'api_gateway',
-      label: 'Integrasi API Instansi Terkait',
-      desc: 'Endpoint GeoJSON, Open311-ID, & Webhook HMAC-SHA256',
-      icon: <Globe className="w-4 h-4" />,
+      label: 'API',
+      icon: <Globe className="w-5 h-5" />,
     },
   ];
 
+  const isSecondaryScreen =
+    activeTab === 'analytics' || activeTab === 'admin' || activeTab === 'api_gateway';
+
   return (
-    <div className="min-h-screen bg-[#e2e8da] flex flex-col items-center justify-center sm:py-5 sm:px-4">
+    <div className="h-dvh overflow-hidden bg-[#e2e8da] flex flex-col items-center justify-center sm:py-3 sm:px-4">
       {/* Subtle Outer Studio Frame Control (Desktop Only) */}
       <div
-        className={`hidden sm:flex items-center justify-between w-full mb-2 px-3 text-xs text-[#5b6649] transition-all ${
+        className={`hidden sm:flex items-center justify-between w-full shrink-0 mb-2 px-3 text-xs text-[#5b6649] transition-all ${
           frameExpanded ? 'max-w-4xl' : 'max-w-[420px]'
         }`}
       >
@@ -806,53 +777,61 @@ export default function App() {
           {frameExpanded ? (
             <>
               <Minimize2 className="w-3 h-3" />
-              <span>Bingkai Ponsel (420px)</span>
+              <span>Bingkai Ponsel</span>
             </>
           ) : (
             <>
               <Maximize2 className="w-3 h-3" />
-              <span>Perluas Layar</span>
+              <span>Perluas</span>
             </>
           )}
         </button>
       </div>
 
-      {/* Centered Mobile-App Phone Frame Shell */}
+      {/* Centered Mobile-App Phone Frame Shell (Viewport-Constrained so Top & Bottom Menus Stay Sticky) */}
       <div
-        className={`w-full ${
-          frameExpanded ? 'sm:max-w-4xl' : 'sm:max-w-[420px]'
-        } min-h-screen sm:min-h-0 sm:h-[856px] sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl overflow-hidden flex flex-col relative transition-all duration-200 ${
+        className={`w-full flex-1 min-h-0 ${
+          frameExpanded ? 'sm:max-w-4xl sm:max-h-[880px]' : 'sm:max-w-[420px] sm:max-h-[856px]'
+        } sm:rounded-[42px] sm:border-[7px] sm:border-[#263015] sm:shadow-2xl overflow-hidden flex flex-col relative transition-all duration-200 ${
           isSageScreen ? 'bg-[#dcecc3]' : 'bg-[#f7f9f4]'
         }`}
       >
-        {/* Compact Sticky Top App Bar (54px — within 15% mobile sticky cap) */}
+        {/* Sticky Top App Bar (50px — Clean Title & Single Notification Action) */}
         <header
-          className={`h-[54px] shrink-0 px-4 flex items-center justify-between gap-2 border-b z-20 ${
+          className={`sticky top-0 z-30 h-[50px] shrink-0 px-4 flex items-center justify-between gap-3 border-b shadow-[0_1px_4px_rgba(38,48,21,0.05)] ${
             isSageScreen
               ? 'bg-[#dcecc3]/95 border-[#cbe0b0]'
               : 'bg-[#f7f9f4]/95 border-[#cbe0b0]'
           } backdrop-blur-md`}
         >
-          <button
-            type="button"
-            onClick={() => setMenuSheetOpen(true)}
-            aria-label="Buka menu modul dan profil"
-            className="min-h-[42px] min-w-[42px] rounded-full bg-[#586826]/10 text-[#263015] hover:bg-[#586826]/20 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-
-          <div className="min-w-0 text-center">
-            <p className="text-sm font-bold text-[#263015] truncate">
+          <div className="flex items-center gap-2 min-w-0">
+            {isSecondaryScreen ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('overview')}
+                aria-label="Kembali ke Beranda"
+                className="min-h-[38px] min-w-[38px] -ml-1 rounded-full bg-[#586826]/10 text-[#263015] hover:bg-[#586826]/20 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            ) : (
+              <span className="w-7 h-7 rounded-xl bg-[#586826] text-[#a5cf4c] flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </span>
+            )}
+            <span className="text-sm font-bold text-[#263015] truncate">
               {TAB_LABELS[activeTab]}
-            </p>
+            </span>
           </div>
 
           <button
             type="button"
-            onClick={() => setNotifDrawerOpen(true)}
-            aria-label="Buka notifikasi push"
-            className="min-h-[42px] min-w-[42px] rounded-full bg-[#586826] text-[#f7f9f4] hover:bg-[#48561e] flex items-center justify-center relative transition-colors cursor-pointer shrink-0"
+            onClick={() => {
+              setMenuSheetOpen(false);
+              setNotifDrawerOpen(true);
+            }}
+            aria-label="Buka notifikasi"
+            className="min-h-[40px] min-w-[40px] rounded-full bg-[#586826] text-[#f7f9f4] hover:bg-[#48561e] flex items-center justify-center relative transition-colors cursor-pointer shrink-0"
           >
             <Bell className="w-4 h-4" />
             {unreadNotifCount > 0 && (
@@ -898,25 +877,24 @@ export default function App() {
           </div>
         )}
 
-        {/* Scrollable Screen Body */}
-        <main className="flex-1 overflow-y-auto phone-scroll px-4 py-4">
+        {/* Scrollable Screen Body (min-h-0 keeps header & bottom menu permanently sticky) */}
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain phone-scroll px-4 py-4">
           {activeTab === 'overview' && (
             <div className="space-y-5">
-              {/* Top Feed Scope Pill Bar + Push Trigger */}
+              {/* Simple 2-Item Scope Filter + RT Badge */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1 p-1 bg-[#e6f2d3] border border-[#cbe0b0] rounded-full">
                   {(
                     [
-                      { id: 'all', label: 'Semua RW' },
-                      { id: 'per_rt', label: 'Per RT' },
-                      { id: 'mine', label: 'Milik Saya' },
+                      { id: 'all', label: 'Semua' },
+                      { id: 'mine', label: 'Saya' },
                     ] as const
                   ).map((sc) => (
                     <button
                       key={sc.id}
                       type="button"
                       onClick={() => setFeedScope(sc.id)}
-                      className={`min-h-[34px] px-3 py-1 text-xs font-semibold rounded-full transition-colors whitespace-nowrap cursor-pointer ${
+                      className={`min-h-[34px] px-3.5 py-1 text-xs font-semibold rounded-full transition-colors whitespace-nowrap cursor-pointer ${
                         feedScope === sc.id
                           ? 'bg-[#586826] text-[#f7f9f4]'
                           : 'text-[#5b6649] hover:text-[#263015]'
@@ -1047,42 +1025,6 @@ export default function App() {
                   })}
                 </div>
               </section>
-
-              {/* Per-RT Quick Strip when feedScope === 'per_rt' */}
-              {feedScope === 'per_rt' && (
-                <div className="bg-[#dcecc3] border border-[#cbe0b0] rounded-2xl p-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#263015]">Pilih RT (10 Wilayah)</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('per_rt')}
-                      className="text-[11px] font-semibold text-[#586826] underline cursor-pointer"
-                    >
-                      Katalog Lengkap →
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-                    {RT_UNITS.map((unit) => {
-                      const count = allVisibleReports.filter((r) => r.rt === unit).length;
-                      const active = overviewSelectedRt === unit;
-                      return (
-                        <button
-                          key={unit}
-                          type="button"
-                          onClick={() => setOverviewSelectedRt(unit)}
-                          className={`min-h-[36px] px-3 py-1 text-xs font-mono rounded-full transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                            active
-                              ? 'bg-[#586826] text-[#f7f9f4] font-bold'
-                              : 'bg-[#f7f9f4] text-[#263015] border border-[#cbe0b0]'
-                          }`}
-                        >
-                          {unit} ({count})
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Live Geographic Map Card */}
               {showOverviewMap && (
@@ -1320,16 +1262,21 @@ export default function App() {
           {activeTab === 'api_gateway' && <ApiIntegrationView dispatches={dispatches} />}
         </main>
 
-        {/* Pinned Mobile Bottom Navigation Bar (62px — Thumb-Zone Ergonomic Anchor) */}
+        {/* Sticky Bottom Navigation Menu Bar — 5 Clear 1-Word Menus */}
         <nav
-          aria-label="Navigasi Utama Bawah"
-          className="h-[62px] shrink-0 bg-[#f7f9f4]/95 border-t border-[#cbe0b0] backdrop-blur-md grid grid-cols-5 items-center px-1.5 z-20"
+          aria-label="Menu Utama"
+          className="sticky bottom-0 z-40 h-[60px] shrink-0 bg-[#f7f9f4]/95 border-t border-[#cbe0b0] backdrop-blur-md grid grid-cols-5 items-center px-1.5 shadow-[0_-2px_10px_rgba(38,48,21,0.06)]"
         >
           <button
             type="button"
-            onClick={() => setActiveTab('overview')}
-            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
-              activeTab === 'overview' ? 'text-[#586826] font-bold' : 'text-[#5b6649]'
+            onClick={() => {
+              setMenuSheetOpen(false);
+              setActiveTab('overview');
+            }}
+            className={`min-h-[48px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              !menuSheetOpen && activeTab === 'overview'
+                ? 'bg-[#e6f2d3] text-[#586826] font-bold'
+                : 'text-[#5b6649] hover:text-[#263015]'
             }`}
           >
             <Home className="w-5 h-5" />
@@ -1338,107 +1285,105 @@ export default function App() {
 
           <button
             type="button"
-            onClick={() => setActiveTab('per_rt')}
-            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
-              activeTab === 'per_rt' ? 'text-[#586826] font-bold' : 'text-[#5b6649]'
+            onClick={() => {
+              setMenuSheetOpen(false);
+              setActiveTab('per_rt');
+            }}
+            className={`min-h-[48px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              !menuSheetOpen && activeTab === 'per_rt'
+                ? 'bg-[#e6f2d3] text-[#586826] font-bold'
+                : 'text-[#5b6649] hover:text-[#263015]'
             }`}
           >
             <Grid2x2 className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 whitespace-nowrap">10 RT</span>
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">RT</span>
           </button>
 
-          {/* Center Primary Camera Report Trigger */}
-          <div className="flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setReportPrefill(null);
-                setActiveTab('create_report');
-              }}
-              aria-label="Kirim Laporan Kejadian"
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer ${
-                activeTab === 'create_report'
+          {/* Center Primary Report Button — Clearly Labeled "Lapor" */}
+          <button
+            type="button"
+            onClick={() => {
+              setMenuSheetOpen(false);
+              setReportPrefill(null);
+              setActiveTab('create_report');
+            }}
+            className="min-h-[48px] flex flex-col items-center justify-center cursor-pointer group"
+          >
+            <span
+              className={`w-9 h-7 rounded-xl flex items-center justify-center transition-all group-active:scale-95 ${
+                !menuSheetOpen && activeTab === 'create_report'
                   ? 'bg-[#a5cf4c] text-[#263015] ring-2 ring-[#586826]'
-                  : 'bg-[#586826] text-[#f7f9f4] hover:bg-[#48561e]'
+                  : 'bg-[#586826] text-[#f7f9f4] group-hover:bg-[#48561e]'
               }`}
             >
-              <Camera className="w-5 h-5" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('jumantik')}
-            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
-              activeTab === 'jumantik' ? 'text-[#586826] font-bold' : 'text-[#5b6649]'
-            }`}
-          >
-            <ClipboardList className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 whitespace-nowrap">ABJ</span>
+              <Camera className="w-4 h-4" />
+            </span>
+            <span
+              className={`text-[10px] mt-0.5 whitespace-nowrap ${
+                !menuSheetOpen && activeTab === 'create_report'
+                  ? 'text-[#263015] font-bold'
+                  : 'text-[#586826] font-semibold'
+              }`}
+            >
+              Lapor
+            </span>
           </button>
 
           <button
             type="button"
-            onClick={() => setMenuSheetOpen(true)}
-            className={`min-h-[46px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
-              activeTab === 'analytics' || activeTab === 'admin' || activeTab === 'api_gateway'
-                ? 'text-[#586826] font-bold'
-                : 'text-[#5b6649]'
+            onClick={() => {
+              setMenuSheetOpen(false);
+              setActiveTab('jumantik');
+            }}
+            className={`min-h-[48px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer ${
+              !menuSheetOpen && activeTab === 'jumantik'
+                ? 'bg-[#e6f2d3] text-[#586826] font-bold'
+                : 'text-[#5b6649] hover:text-[#263015]'
+            }`}
+          >
+            <Droplets className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">Jentik</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMenuSheetOpen((prev) => !prev)}
+            className={`min-h-[48px] flex flex-col items-center justify-center rounded-2xl transition-colors cursor-pointer relative ${
+              menuSheetOpen || isSecondaryScreen
+                ? 'bg-[#e6f2d3] text-[#586826] font-bold'
+                : 'text-[#5b6649] hover:text-[#263015]'
             }`}
           >
             <LayoutGrid className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 whitespace-nowrap">Menu</span>
+            <span className="text-[10px] mt-0.5 whitespace-nowrap">Lainnya</span>
           </button>
         </nav>
 
-        {/* Bottom-Sheet Module & Citizen Profile Drawer */}
+        {/* Compact "Lainnya" Sheet — Anchored Above Bottom Bar, Only Non-Repeated 1-Word Items + Account */}
         {menuSheetOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/45 backdrop-blur-xs p-0 sm:p-4">
-            <div className="w-full max-w-[420px] bg-[#f7f9f4] border border-[#cbe0b0] rounded-t-3xl sm:rounded-3xl max-h-[86vh] flex flex-col overflow-hidden shadow-xl">
-              <div className="w-10 h-1.5 bg-[#586826]/25 rounded-full mx-auto mt-3" />
-
-              <div className="px-5 py-3.5 border-b border-[#cbe0b0] flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-[#263015] truncate">
-                    {userProfile.displayName}
-                  </p>
-                  <p className="text-[11px] text-[#5b6649] inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-[#586826]" />
-                    <span>{isAdmin ? 'Petugas Admin RW 013' : 'Warga Terverifikasi'}</span>
-                  </p>
-                </div>
+          <div
+            onClick={() => setMenuSheetOpen(false)}
+            className="absolute inset-x-0 top-0 bottom-[60px] z-35 flex items-end justify-center bg-black/35 backdrop-blur-xs"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full bg-[#f7f9f4] border-t border-[#cbe0b0] rounded-t-3xl p-4 space-y-3.5 shadow-xl"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#263015]">Menu Lainnya</span>
                 <button
                   type="button"
                   onClick={() => setMenuSheetOpen(false)}
-                  aria-label="Tutup menu"
-                  className="min-h-[40px] min-w-[40px] rounded-full bg-[#e6f2d3] text-[#586826] flex items-center justify-center cursor-pointer"
+                  aria-label="Tutup menu lainnya"
+                  className="min-h-[34px] min-w-[34px] rounded-full bg-[#e6f2d3] text-[#586826] flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Domisili RT Selector */}
-              <div className="px-5 py-3 bg-[#dcecc3] border-b border-[#cbe0b0] flex items-center justify-between gap-3 text-xs">
-                <label htmlFor="sheet-home-rt" className="font-semibold text-[#263015]">
-                  Domisili Wilayah Warga:
-                </label>
-                <select
-                  id="sheet-home-rt"
-                  value={userProfile.rt}
-                  onChange={(e) => handleChangeHomeRt(e.target.value as RtUnit)}
-                  className="min-h-[38px] px-3 py-1 text-xs font-mono font-bold bg-white border border-[#cbe0b0] rounded-full text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
-                >
-                  {RT_UNITS.map((u) => (
-                    <option key={u} value={u}>
-                      {u} · RW 013
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* All Navigation Destinations */}
-              <div className="flex-1 overflow-y-auto phone-scroll p-3.5 space-y-2">
-                {drawerModules.map((mod) => {
+              {/* Clean 1-Word Icon Tiles (Only Tren, Admin, API — Zero Duplication) */}
+              <div className={`grid gap-2.5 ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {extraModules.map((mod) => {
                   const active = activeTab === mod.id;
                   return (
                     <button
@@ -1448,58 +1393,61 @@ export default function App() {
                         setActiveTab(mod.id);
                         setMenuSheetOpen(false);
                       }}
-                      className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${
+                      className={`min-h-[76px] p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 relative cursor-pointer ${
                         active
                           ? 'bg-[#586826] border-[#586826] text-[#f7f9f4]'
                           : 'bg-white border-[#cbe0b0] text-[#263015] hover:bg-[#e6f2d3]'
                       }`}
                     >
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                          active
-                            ? 'bg-[#48561e] text-[#a5cf4c]'
-                            : 'bg-[#586826] text-[#dcecc3]'
-                        }`}
-                      >
+                      {mod.badge && (
+                        <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-[#a5cf4c] text-[#263015] font-mono text-[10px] font-bold flex items-center justify-center">
+                          {mod.badge}
+                        </span>
+                      )}
+                      <span className={active ? 'text-[#a5cf4c]' : 'text-[#586826]'}>
                         {mod.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold truncate">{mod.label}</span>
-                          {mod.badge && (
-                            <span
-                              className={`text-[10px] font-mono font-bold shrink-0 ${
-                                active ? 'text-[#a5cf4c]' : 'text-[#586826]'
-                              }`}
-                            >
-                              {mod.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          className={`text-[11px] truncate ${
-                            active ? 'text-[#dcecc3]' : 'text-[#5b6649]'
-                          }`}
-                        >
-                          {mod.desc}
-                        </p>
-                      </div>
+                      </span>
+                      <span className="text-xs font-bold whitespace-nowrap">{mod.label}</span>
                     </button>
                   );
                 })}
               </div>
 
-              <div className="p-4 border-t border-[#cbe0b0] bg-[#f7f9f4]">
+              {/* Compact Account, Domisili RT & Sign-Out Strip */}
+              <div className="bg-[#dcecc3] border border-[#cbe0b0] rounded-2xl p-3 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[#263015] truncate">
+                    {userProfile.displayName}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <label htmlFor="sheet-home-rt" className="text-[11px] text-[#5b6649]">
+                      Domisili:
+                    </label>
+                    <select
+                      id="sheet-home-rt"
+                      value={userProfile.rt}
+                      onChange={(e) => handleChangeHomeRt(e.target.value as RtUnit)}
+                      className="min-h-[30px] px-2.5 py-0.5 text-[11px] font-mono font-bold bg-white border border-[#cbe0b0] rounded-full text-[#263015] focus:outline-none focus:ring-2 focus:ring-[#586826]"
+                    >
+                      {RT_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
                     setMenuSheetOpen(false);
                     signOut(auth);
                   }}
-                  className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-red-800 bg-white border border-red-200 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
+                  className="min-h-[38px] inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-red-800 bg-white border border-red-200 rounded-full hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Keluar dari Sesi Akun</span>
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Keluar</span>
                 </button>
               </div>
             </div>

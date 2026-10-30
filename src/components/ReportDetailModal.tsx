@@ -90,8 +90,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/45 backdrop-blur-xs">
-      <div className="bg-[#f7f9f4] border border-[#cbe0b0] rounded-t-3xl sm:rounded-3xl max-w-[420px] w-full max-h-[88vh] overflow-y-auto phone-scroll p-5 space-y-4 shadow-xl">
+    <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-xs">
+      <div className="bg-[#f7f9f4] border-t border-[#cbe0b0] rounded-t-3xl w-full max-h-[88%] overflow-y-auto phone-scroll p-5 space-y-4 shadow-xl">
         {/* Bottom Sheet Grab Handle */}
         <div className="w-10 h-1.5 bg-[#586826]/25 rounded-full mx-auto -mt-1" />
 

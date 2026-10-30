@@ -44,8 +44,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/45 backdrop-blur-xs p-0 sm:p-4">
-      <div className="w-full max-w-[420px] bg-[#f7f9f4] border border-[#cbe0b0] rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-xl">
+    <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-xs">
+      <div className="w-full bg-[#f7f9f4] border-t border-[#cbe0b0] rounded-t-3xl max-h-[85%] flex flex-col overflow-hidden shadow-xl">
         {/* Bottom Sheet Grab Handle */}
         <div className="w-10 h-1.5 bg-[#586826]/25 rounded-full mx-auto mt-3" />
 

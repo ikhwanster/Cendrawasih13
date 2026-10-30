@@ -276,10 +276,10 @@ export const RtReportModeView: React.FC<RtReportModeViewProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
           {(
             [
-              { id: 'ALL', label: 'Semua 10 RT' },
-              { id: 'RAWAN', label: 'Ada Aktif / Waspada' },
-              { id: 'AMAN', label: 'Terkendali' },
-              { id: 'MATRIX', label: 'Tabel Matriks' },
+              { id: 'ALL', label: 'Semua' },
+              { id: 'RAWAN', label: 'Rawan' },
+              { id: 'AMAN', label: 'Aman' },
+              { id: 'MATRIX', label: 'Tabel' },
             ] as const
           ).map((f) => (
             <button
